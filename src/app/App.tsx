@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { HomePage } from "@pages/home";
 import { PlaygroundPage } from "@pages/playground";
+import { SettingsPage } from "@pages/settings";
 import { Sidebar } from "@widgets/sidebar";
 
 function App() {
@@ -12,6 +13,7 @@ function App() {
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         {activePage === "home" && <HomePage />}
         {activePage === "playground" && <PlaygroundPage />}
+        {activePage === "settings" && <SettingsPage />}
       </main>
     </div>
   );

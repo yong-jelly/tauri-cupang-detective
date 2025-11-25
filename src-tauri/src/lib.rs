@@ -22,6 +22,7 @@ async fn proxy_request(
     url: String,
     method: String,
     headers: HashMap<String, String>,
+    body: Option<String>,
 ) -> Result<ProxyResponse, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut easy = Easy::new();
@@ -31,9 +32,14 @@ async fn proxy_request(
 
         easy.cookie_file("").map_err(|e| e.to_string())?; // enable cookie engine in memory
 
+        let payload_bytes = body.map(|b| b.into_bytes());
+
         match method.as_str() {
             "POST" => {
                 easy.post(true).map_err(|e| e.to_string())?;
+                if let Some(ref bytes) = payload_bytes {
+                    easy.post_fields_copy(bytes).map_err(|e| e.to_string())?;
+                }
             }
             "PUT" => {
                 easy.custom_request("PUT").map_err(|e| e.to_string())?;

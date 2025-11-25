@@ -27,6 +27,14 @@ export const Sidebar = ({ activePage = "home", onNavigate }: SidebarProps) => {
             >
               <span className="mr-2">⚡️</span> Playground
             </li>
+            <li
+              onClick={() => onNavigate?.("settings")}
+              className={`px-4 py-1 cursor-pointer flex items-center ${
+                activePage === "settings" ? "bg-[#1164A3] text-white" : "text-[#bcabbc] hover:bg-[#350d36]"
+              }`}
+            >
+              <span className="mr-2">⚙️</span> Settings
+            </li>
           </ul>
         </div>
 

@@ -1,13 +1,7 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-
-type ProxyResponse = {
-  status: number;
-  body: string;
-  final_url?: string | null;
-  response_headers?: string[] | null;
-  request_headers?: string[] | null;
-};
+import { ProxyResponse } from "@shared/api/types";
+import { parseCurlCommand } from "@shared/lib/parseCurl";
 
 const DEFAULT_CURL = `curl 'https://orders.pay.naver.com/orderApi/payment/detail/category?paymentId=20221230NP5141271741' \\
   -H 'accept: application/json, text/plain, */*' \\
@@ -34,62 +28,13 @@ export const PlaygroundPage = () => {
   const [responseHeaders, setResponseHeaders] = useState<string[]>([]);
   const [requestHeaders, setRequestHeaders] = useState<string[]>([]);
 
-  // Helper to parse curl command
-  const parseCurl = (curl: string) => {
-    let url = "";
-    let method = "GET";
-    const headers: Record<string, string> = {};
-
-    // Normalize curl command: remove newlines and backslashes
-    const normalizedCurl = curl.replace(/\\\n/g, " ").replace(/[\r\n]+/g, " ").trim();
-
-    // Extract URL (first quoted string after 'curl')
-    // Supports both single and double quotes
-    const urlMatch = normalizedCurl.match(/curl\s+(?:-X\s+\w+\s+)?['"]([^'"]+)['"]/);
-    if (urlMatch) {
-      url = urlMatch[1];
-    }
-
-    // Extract Method (-X POST or implied by -d)
-    const methodMatch = normalizedCurl.match(/-X\s+([A-Z]+)/);
-    if (methodMatch) {
-      method = methodMatch[1];
-    } else if (normalizedCurl.includes(" -d ") || normalizedCurl.includes(" --data ")) {
-      method = "POST";
-    }
-
-    // Extract Headers (-H 'Key: Value')
-    // Handles both single and double quotes by capturing whichever group matches
-    const headerRegex = /-H\s+(?:"([^"]*)"|'([^']*)')/g;
-    let match;
-    while ((match = headerRegex.exec(normalizedCurl)) !== null) {
-      const headerContent = match[1] ?? match[2] ?? "";
-      const colonIndex = headerContent.indexOf(":");
-      if (colonIndex > -1) {
-        const key = headerContent.substring(0, colonIndex).trim();
-        const value = headerContent.substring(colonIndex + 1).trim();
-        if (key && value) {
-          headers[key] = value;
-        }
-      }
-    }
-
-    // Extract Cookie (-b 'CookieString')
-    const cookieMatch = normalizedCurl.match(/-b\s+(?:"([^"]*)"|'([^']*)')/);
-    if (cookieMatch) {
-      headers["Cookie"] = cookieMatch[1] ?? cookieMatch[2] ?? "";
-    }
-
-    return { url, method, headers };
-  };
-
   const handleSend = async () => {
     setLoading(true);
     setResponse("");
     setStatus(null);
 
     try {
-      const { url, method, headers } = parseCurl(curlCommand);
+      const { url, method, headers, body } = parseCurlCommand(curlCommand);
 
       if (!url) {
         throw new Error("Could not parse URL from curl command");
@@ -99,6 +44,7 @@ export const PlaygroundPage = () => {
         url,
         method,
         headers,
+        body: body ?? null,
       });
 
       setStatus(result.status ?? null);
