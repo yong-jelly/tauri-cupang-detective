@@ -59,12 +59,11 @@ export const PlaygroundPage = () => {
     }
 
     // Extract Headers (-H 'Key: Value')
-    // Handles both single and double quotes, and ignores whitespace around colon
-    // Using global flag with exec loop to handle multiple matches correctly
-    const headerRegex = /-H\s+['"]([^'"]+)['"]/g;
+    // Handles both single and double quotes by capturing whichever group matches
+    const headerRegex = /-H\s+(?:"([^"]*)"|'([^']*)')/g;
     let match;
     while ((match = headerRegex.exec(normalizedCurl)) !== null) {
-      const headerContent = match[1];
+      const headerContent = match[1] ?? match[2] ?? "";
       const colonIndex = headerContent.indexOf(":");
       if (colonIndex > -1) {
         const key = headerContent.substring(0, colonIndex).trim();
@@ -76,9 +75,9 @@ export const PlaygroundPage = () => {
     }
 
     // Extract Cookie (-b 'CookieString')
-    const cookieMatch = normalizedCurl.match(/-b\s+['"]([^'"]+)['"]/);
+    const cookieMatch = normalizedCurl.match(/-b\s+(?:"([^"]*)"|'([^']*)')/);
     if (cookieMatch) {
-      headers["Cookie"] = cookieMatch[1];
+      headers["Cookie"] = cookieMatch[1] ?? cookieMatch[2] ?? "";
     }
 
     return { url, method, headers };
@@ -178,22 +177,22 @@ export const PlaygroundPage = () => {
               </div>
             )}
             {requestHeaders.length > 0 && (
-              <div className="mb-2 text-xs text-gray-600">
-                <p className="font-semibold">Request Headers</p>
-                <pre className="bg-gray-100 rounded p-2 mt-1 whitespace-pre-wrap break-words">
+              <details className="mb-2 text-xs text-gray-600 bg-gray-100 rounded p-2">
+                <summary className="font-semibold cursor-pointer">Request Headers</summary>
+                <pre className="whitespace-pre-wrap break-words mt-2">
                   {requestHeaders.join("\n")}
                 </pre>
-              </div>
+              </details>
             )}
             {responseHeaders.length > 0 && (
-              <div className="mb-2 text-xs text-gray-600">
-                <p className="font-semibold">Response Headers</p>
-                <pre className="bg-gray-100 rounded p-2 mt-1 whitespace-pre-wrap break-words">
+              <details className="mb-2 text-xs text-gray-600 bg-gray-100 rounded p-2">
+                <summary className="font-semibold cursor-pointer">Response Headers</summary>
+                <pre className="whitespace-pre-wrap break-words mt-2">
                   {responseHeaders.join("\n")}
                 </pre>
-              </div>
+              </details>
             )}
-            <div className="flex-1 border rounded bg-gray-50 p-4 overflow-auto relative">
+            <div className="flex-1 border rounded bg-gray-50 p-4 overflow-auto relative min-h-[400px]">
               {response ? (
                 <pre className="text-sm font-mono whitespace-pre-wrap break-all">
                   {response}
