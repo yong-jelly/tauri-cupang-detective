@@ -252,8 +252,8 @@ export const SettingsPage = () => {
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
-      <div className="h-12 border-b flex items-center px-5 font-semibold text-gray-800 flex-shrink-0">
-        설정 · 계정 관리
+      <div className="h-16 border-b border-gray-200 bg-white flex items-center px-6 flex-shrink-0">
+        <h1 className="text-lg font-semibold text-gray-900">설정 · 계정 관리</h1>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">

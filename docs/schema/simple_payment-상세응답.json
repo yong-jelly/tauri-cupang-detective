@@ -1,0 +1,86 @@
+{
+    "code": "00",
+    "message": "성공",
+    "result": {
+        "type": "Success",
+        "message": "성공",
+        "payment": {
+            "id": "20250824NP4859048301",
+            "date": "2025-08-24T20:30:59",
+            "status": "COMPLETION",
+            "purchaserName": "권용택"
+        },
+        "merchant": {
+            "name": "네이버페이 현장결제 포인트",
+            "url": "http://www.bccard.com",
+            "imageUrl": "https://img.pay.naver.net/z/mstatic/img/service/mobile/nsp/crossborder/bg_shop.png",
+            "paymentId": "60775485",
+            "tel": "15883819",
+            "subMerchant": {
+                "name": "CU 서귀대정점",
+                "url": null,
+                "paymentId": null
+            },
+            "isTaxType": false,
+            "isAgreedOverseaTransfer": false
+        },
+        "product": {
+            "name": "롯데)솔의눈제로P500m 외 4건",
+            "count": 1
+        },
+        "amount": {
+            "totalAmount": 9800,
+            "discountAmount": 0,
+            "cupDepositAmount": 0,
+            "paymentMethod": {
+                "easyCard": 0,
+                "easyBank": 0,
+                "rewardPoint": 1392,
+                "chargePoint": 8408,
+                "giftCard": 0
+            }
+        },
+        "paymentMethod": {
+            "selectedPaymentMethod": [
+                "REWARD_POINT",
+                "CHARGE_POINT"
+            ],
+            "easyCard": null,
+            "easyBank": null
+        },
+        "refundAmount": null,
+        "benefit": {
+            "type": "NONE",
+            "hasPlusMembership": false,
+            "waitingPeriod": null,
+            "accumulatedDate": 1756035216948,
+            "acms": [{
+                    "acmAmount": 8,
+                    "name": "[현장결제]포인트뽑기 혜택",
+                    "cashTradeReasonClass": "EVENT"
+                },
+                {
+                    "acmAmount": 2,
+                    "name": "[현장결제]포인트뽑기-페이앱 보너스 혜택",
+                    "cashTradeReasonClass": "EVENT"
+                },
+                {
+                    "acmAmount": 16,
+                    "name": "[현장결제]포인트머니 포인트뽑기 혜택",
+                    "cashTradeReasonClass": "EVENT"
+                }
+            ],
+            "benefitCardReward": {
+                "netBenefitExpectedAmount": 0,
+                "benefitAmount": 0
+            },
+            "isConfirmable": false,
+            "confirmExpectedYmd": null
+        },
+        "receipt": {
+            "cash": null,
+            "card": null,
+            "cupDeposit": null
+        }
+    }
+}

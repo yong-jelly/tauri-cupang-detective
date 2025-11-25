@@ -70,9 +70,9 @@ export const PlaygroundPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="h-12 border-b flex items-center px-4 font-bold text-gray-800 flex-shrink-0 justify-between">
-        HTTP Playground
+    <div className="flex flex-col h-full bg-gray-50">
+      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+        <h1 className="text-lg font-semibold text-gray-900">HTTP Playground</h1>
         <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">Paste full cURL command below</span>
       </div>
 
@@ -81,14 +81,14 @@ export const PlaygroundPage = () => {
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left: Input */}
-          <div className="flex-1 flex flex-col p-4 border-r border-gray-200 min-w-[300px]">
+          <div className="flex-1 flex flex-col p-6 border-r border-gray-200 min-w-[300px] bg-white">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               cURL Command
             </label>
             <textarea
               value={curlCommand}
               onChange={(e) => setCurlCommand(e.target.value)}
-              className="flex-1 w-full border rounded p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none bg-gray-50"
+              className="flex-1 w-full border border-gray-300 rounded-lg p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none bg-gray-50"
               placeholder="curl 'https://api.example.com' -H '...'"
               spellCheck={false}
             />
@@ -96,8 +96,8 @@ export const PlaygroundPage = () => {
               <button
                 onClick={handleSend}
                 disabled={loading}
-                className={`w-full py-3 rounded font-bold text-white transition-colors shadow-sm ${
-                  loading ? "bg-gray-400 cursor-not-allowed" : "bg-[#007a5a] hover:bg-[#148567]"
+                className={`w-full py-3 rounded-lg font-semibold text-white transition-colors shadow-sm ${
+                  loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
                 {loading ? "Sending Request..." : "Run Request"}
@@ -106,7 +106,7 @@ export const PlaygroundPage = () => {
           </div>
 
           {/* Right: Response */}
-          <div className="flex-1 flex flex-col p-4 bg-white min-w-[300px]">
+          <div className="flex-1 flex flex-col p-6 bg-white min-w-[300px]">
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-gray-700">Response</label>
               {status !== null && (

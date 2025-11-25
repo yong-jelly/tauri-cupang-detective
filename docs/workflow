@@ -1,0 +1,27 @@
+
+## 2025-11-25
+- 15:05 · 지출 탐정 첫 구동 흐름 정의: DB가 없으면 온보딩 화면(새 DB 생성/기존 파일 로드)만 표시하고 메뉴는 잠금 처리.
+- 15:25 · 시스템 설정 페이지에 SQLite 초기화·로드 명령 연결, fun hero + 버전 배지 추가.
+- 16:10 · DB 경로를 설정 파일로 분리해 첫 실행 시 반드시 온보딩 화면을 거치게 하고, 파일/폴더 다이얼로그 플러그인 연결.
+
+## 2025-11-26
+- 01:00 · DB 생성 후 계정 데이터가 없으면 온보딩 페이지가 표시되지 않는 문제 수정: `has_users` API로 계정 존재 여부 확인 후 온보딩 페이지 표시.
+- 01:30 · 좌측 상단 헤더에 계정 선택 기능 추가 (Slack 스타일): 헤더 클릭 시 계정 목록 드롭다운 표시, 계정 선택/해제 기능 구현.
+- 02:00 · 좌측 메뉴에 데이터 수집 메뉴 추가: 선택된 계정이 네이버인 경우 "데이터 수집" 메뉴 표시.
+- 02:30 · 데이터 수집 페이지 구현: 네이버 거래 목록 조회 (1페이지), 거래 상세 조회 기능 추가. 2x2 그리드 레이아웃 (좌측: JSON 원본, 우측: 파싱된 테이블).
+- 03:00 · 거래 목록/상세 JSON 헤더에 클립보드 복사 기능 추가: 거래 목록 JSON 전체 복사, 거래 상세 JSON의 API URL 복사.
+- 03:30 · LOCALPAY 타입 거래 상세 URL 패턴 추가: `orders.pay.naver.com/orderApi/orderSheet/detail/?orderNo={orderNo}` 패턴 사용.
+- 04:00 · LOCALPAY 응답 구조 대응: `order`, `productOrders`, `productBundleGroups`, `pay`, `deliveryAddress` 필드 파싱 및 표시.
+- 04:30 · ORDER 타입 거래 상세 지원: ORDER 타입도 LOCALPAY와 동일한 URL 패턴 및 응답 구조 사용.
+- 05:00 · 배송지 정보 표시 추가: ORDER 타입 거래의 배송지 정보 (수령인, 주소, 연락처 등) 표시 기능 추가.
+- 05:30 · 네이버 데이터 수집 기능 및 DB 저장 구현:
+  - 스키마 정의: `tbl_naver_payment`, `tbl_naver_payment_item` 테이블 추가 (SQLite).
+  - Rust 백엔드: `save_naver_payment` 커맨드 구현 (트랜잭션, UPSERT 처리).
+  - UI 개편: `NaverCollectionPage` 추가 (실험용 `DataCollectionPage` 분리).
+  - 수집 로직: 전체 페이지 수 확인 후 역순 수집, 실시간 로그 및 진행률 표시.
+- 06:30 · 수집 로그 개선 및 테이블 관리 기능 추가:
+  - 로그 UI 개선: 상품 이미지, 결제일, 금액 표시 추가.
+  - 테이블 관리 페이지 (`TableManagerPage`): 테이블 목록, 행 수 확인, 데이터 페이징 조회, 데이터 초기화(Truncate) 기능 구현.
+  - Rust 백엔드: `get_table_stats`, `get_table_data`, `truncate_table` 커맨드 추가.
+  - 앱 시작 시 DB 마이그레이션 자동 실행 로직 추가 (`get_db_status` 내 호출).
+

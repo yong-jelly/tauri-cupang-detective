@@ -6,3 +6,30 @@ export type ProxyResponse = {
   request_headers?: string[] | null;
 };
 
+export type DbStatus = {
+  configured: boolean;
+  path: string;
+  exists: boolean;
+  sizeBytes?: number | null;
+  tables: string[];
+};
+
+export type HasUsersResponse = {
+  hasUsers: boolean;
+};
+
+export type User = {
+  id: string;
+  provider: AccountProvider;
+  alias: string;
+  curl: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UserListResponse = {
+  users: User[];
+};
+
+export type AccountProvider = "naver" | "coupang";
+
