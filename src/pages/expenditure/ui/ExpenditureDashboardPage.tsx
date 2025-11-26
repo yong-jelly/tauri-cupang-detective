@@ -61,24 +61,92 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
 
   const stats = useMemo(() => processExpenditureData(payments, selectedDate), [payments, selectedDate]);
 
-  const handlePrevMonth = () => {
-    setSelectedDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() - 1);
-      return newDate;
+  // DB에 있는 월 목록 계산
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    payments.forEach((payment) => {
+      const date = new Date(payment.paidAt);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      months.add(key);
     });
+    return Array.from(months).sort();
+  }, [payments]);
+
+  // 현재 선택된 월의 키
+  const currentMonthKey = useMemo(() => {
+    return `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}`;
+  }, [selectedDate]);
+
+  // 이전/다음 월 이동 가능 여부
+  const canGoPrev = useMemo(() => {
+    if (availableMonths.length === 0) return false;
+    const currentIndex = availableMonths.indexOf(currentMonthKey);
+    if (currentIndex === -1) {
+      // 현재 선택된 월이 목록에 없으면 가장 가까운 이전 월로 이동 가능 여부 확인
+      return availableMonths.some((m) => m < currentMonthKey);
+    }
+    return currentIndex > 0;
+  }, [availableMonths, currentMonthKey]);
+
+  const canGoNext = useMemo(() => {
+    if (availableMonths.length === 0) return false;
+    const currentIndex = availableMonths.indexOf(currentMonthKey);
+    if (currentIndex === -1) {
+      // 현재 선택된 월이 목록에 없으면 가장 가까운 다음 월로 이동 가능 여부 확인
+      return availableMonths.some((m) => m > currentMonthKey);
+    }
+    return currentIndex < availableMonths.length - 1;
+  }, [availableMonths, currentMonthKey]);
+
+  const handlePrevMonth = () => {
+    if (!canGoPrev) return;
+    
+    const currentIndex = availableMonths.indexOf(currentMonthKey);
+    let targetKey: string;
+    
+    if (currentIndex === -1) {
+      // 현재 월이 목록에 없으면 가장 가까운 이전 월 찾기
+      const prevMonths = availableMonths.filter((m) => m < currentMonthKey);
+      targetKey = prevMonths[prevMonths.length - 1];
+    } else {
+      targetKey = availableMonths[currentIndex - 1];
+    }
+    
+    const [year, month] = targetKey.split("-").map(Number);
+    setSelectedDate(new Date(year, month - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setSelectedDate((prev) => {
-      const newDate = new Date(prev);
-      newDate.setMonth(prev.getMonth() + 1);
-      return newDate;
-    });
+    if (!canGoNext) return;
+    
+    const currentIndex = availableMonths.indexOf(currentMonthKey);
+    let targetKey: string;
+    
+    if (currentIndex === -1) {
+      // 현재 월이 목록에 없으면 가장 가까운 다음 월 찾기
+      const nextMonths = availableMonths.filter((m) => m > currentMonthKey);
+      targetKey = nextMonths[0];
+    } else {
+      targetKey = availableMonths[currentIndex + 1];
+    }
+    
+    const [year, month] = targetKey.split("-").map(Number);
+    setSelectedDate(new Date(year, month - 1, 1));
   };
 
   const handleToday = () => {
-    setSelectedDate(new Date());
+    // 오늘 날짜가 데이터 범위 내에 있는지 확인
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+    
+    if (availableMonths.includes(todayKey)) {
+      setSelectedDate(today);
+    } else if (availableMonths.length > 0) {
+      // 가장 최근 월로 이동
+      const latestKey = availableMonths[availableMonths.length - 1];
+      const [year, month] = latestKey.split("-").map(Number);
+      setSelectedDate(new Date(year, month - 1, 1));
+    }
   };
 
   const handleLoadMore = () => {
@@ -111,7 +179,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
         {/* 헤더 섹션 */}
         <div className="border-b-4 border-gray-800 pb-4 flex justify-between items-end">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">지출 현황부</h1>
+            <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">월별 지출 현황</h1>
             <p className="text-gray-600 text-lg italic">
               {account.alias} ({account.provider})
             </p>
@@ -120,25 +188,35 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
             <div className="flex items-center bg-white border-2 border-gray-800 shadow-[2px_2px_0px_0px_rgba(31,41,55,1)]">
               <button
                 onClick={handlePrevMonth}
-                className="p-2 hover:bg-gray-100 transition-colors border-r-2 border-gray-800"
+                disabled={!canGoPrev}
+                className={`p-2 transition-colors border-r-2 border-gray-800 ${
+                  canGoPrev 
+                    ? "hover:bg-gray-100 text-gray-800" 
+                    : "text-gray-300 cursor-not-allowed"
+                }`}
               >
-                <ChevronLeft className="w-5 h-5 text-gray-800" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
               <div className="px-4 py-2 font-bold text-xl text-gray-900 min-w-[140px] text-center font-serif">
                 {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
               </div>
               <button
                 onClick={handleNextMonth}
-                className="p-2 hover:bg-gray-100 transition-colors border-l-2 border-gray-800"
+                disabled={!canGoNext}
+                className={`p-2 transition-colors border-l-2 border-gray-800 ${
+                  canGoNext 
+                    ? "hover:bg-gray-100 text-gray-800" 
+                    : "text-gray-300 cursor-not-allowed"
+                }`}
               >
-                <ChevronRight className="w-5 h-5 text-gray-800" />
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
             <button
               onClick={handleToday}
               className="px-4 py-2 bg-gray-800 text-white font-bold text-sm border-2 border-gray-800 hover:bg-gray-700 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]"
             >
-              오늘
+              최근
             </button>
           </div>
         </div>
@@ -247,7 +325,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
                       paddingAngle={2}
                       dataKey="amount"
                     >
-                      {stats.merchantStats.map((entry, index) => (
+                      {stats.merchantStats.map((_, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={RETRO_COLORS[index % RETRO_COLORS.length]}

@@ -13,7 +13,7 @@ import {
 import { AccountManagementPage } from "@pages/accounts";
 import { TableManagerPage } from "@pages/table-manager";
 import { TransactionListPage } from "@pages/transactions";
-import { ExpenditureDashboardPage } from "@pages/expenditure";
+import { ExpenditureDashboardPage, ExpenditureOverviewPage } from "@pages/expenditure";
 import { Sidebar } from "@widgets/sidebar";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -231,7 +231,10 @@ function App() {
           {activePage.startsWith("transactions-") && selectedAccount && (
             <TransactionListPage account={selectedAccount} />
           )}
-          {activePage.startsWith("expenditure-") && selectedAccount && (
+          {activePage.startsWith("expenditure-overview-") && selectedAccount && (
+            <ExpenditureOverviewPage account={selectedAccount} />
+          )}
+          {activePage.startsWith("expenditure-") && !activePage.startsWith("expenditure-overview-") && selectedAccount && (
             <ExpenditureDashboardPage account={selectedAccount} />
           )}
           {activePage === "data-collection-test" && selectedAccount && (

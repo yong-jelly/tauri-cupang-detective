@@ -1,14 +1,21 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  ServerCog,
-  Zap,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Database,
   Users,
   FileText,
   Receipt,
   LayoutDashboard,
+  Settings,
+  TrendingUp,
+  Calculator,
+  Wallet,
+  FolderOpen,
+  Wrench,
+  BarChart3,
+  Zap,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -30,6 +37,11 @@ export const Sidebar = ({
   const [accounts, setAccounts] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    expenditure: true,
+    data: true,
+    tools: true,
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -70,48 +82,69 @@ export const Sidebar = ({
     setShowAccountDropdown(false);
   };
 
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // 뉴트로 메뉴 아이템 스타일 (도트/타자기 느낌)
+  const menuItemClass = (isActive: boolean) => `
+    w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-150 border-l-4
+    ${isActive 
+      ? "bg-[#fffef0] text-[#2d2416] font-bold border-[#c49a1a] shadow-[inset_0_0_0_1px_#d4c4a8]" 
+      : "text-[#5c4d3c] hover:bg-[#f0e6d6] hover:text-[#2d2416] border-transparent hover:border-[#d4c4a8]"
+    }
+  `;
+
+  // 섹션 헤더 스타일
+  const sectionHeaderClass = `
+    w-full flex items-center justify-between px-4 py-2.5 text-xs font-bold uppercase tracking-[0.15em]
+    text-[#8b7355] hover:text-[#5c4d3c] transition-colors cursor-pointer select-none border-b border-dashed border-[#d4c4a8]
+  `;
+
   return (
-    <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
-      {/* Workspace Header - Clickable Account Selector */}
+    <div className="w-64 bg-[#fdfbf7] flex flex-col h-full border-r-2 border-[#2d2416] font-mono text-sm">
+      {/* 워크스페이스 헤더 */}
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setShowAccountDropdown(!showAccountDropdown)}
-          className="w-full h-16 border-b border-gray-200 flex items-center px-4 hover:bg-gray-50 transition-colors"
+          className="w-full h-16 border-b-2 border-[#2d2416] flex items-center px-4 hover:bg-[#f6f1e9] transition-colors bg-[#fffef0]"
         >
-          <div className="flex items-center gap-2 flex-1">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-3 flex-1">
+            <div className="w-10 h-10 bg-[#2d2416] border-2 border-[#c49a1a] flex items-center justify-center flex-shrink-0">
+              <Wallet className="w-5 h-5 text-[#c49a1a]" />
             </div>
             <div className="flex-1 min-w-0 text-left">
               {selectedAccount ? (
                 <>
-                  <div className="font-semibold text-gray-900 text-sm truncate">{selectedAccount.alias}</div>
-                  <div className="text-xs text-gray-500 truncate">{selectedAccount.provider}</div>
+                  <div className="font-bold text-[#2d2416] text-base truncate tracking-wide">{selectedAccount.alias}</div>
+                  <div className="text-xs text-[#8b7355] truncate uppercase tracking-[0.15em]">{selectedAccount.provider}</div>
                 </>
               ) : (
                 <>
-                  <div className="font-semibold text-gray-900 text-sm">Tauti</div>
-                  <div className="text-xs text-gray-500">계정 선택</div>
+                  <div className="font-bold text-[#2d2416] text-base tracking-wide">가계부</div>
+                  <div className="text-xs text-[#8b7355] uppercase tracking-[0.15em]">계정 선택</div>
                 </>
               )}
             </div>
           </div>
-          {showAccountDropdown ? (
-            <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          )}
+          <div className={`p-1.5 transition-colors border border-[#d4c4a8] ${showAccountDropdown ? "bg-[#e8dcc8]" : "bg-[#fffef0]"}`}>
+            {showAccountDropdown ? (
+              <ChevronUp className="w-4 h-4 text-[#2d2416]" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-[#5c4d3c]" />
+            )}
+          </div>
         </button>
 
-        {/* Account Dropdown */}
+        {/* 계정 드롭다운 */}
         {showAccountDropdown && (
-          <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-50 max-h-64 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 bg-[#fffef0] border-2 border-[#2d2416] shadow-[4px_4px_0px_0px_rgba(45,36,22,1)] z-50 max-h-72 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-[#c49a1a]" />
               </div>
             ) : accounts.length === 0 ? (
-              <div className="px-4 py-3 text-xs text-gray-400">계정이 없습니다</div>
+              <div className="px-4 py-4 text-sm text-[#8b7355] text-center">등록된 계정이 없습니다</div>
             ) : (
               <div className="py-1">
                 {accounts.map((account) => {
@@ -120,14 +153,14 @@ export const Sidebar = ({
                     <button
                       key={account.id}
                       onClick={() => handleAccountSelect(account.id)}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                      className={`w-full text-left px-4 py-3 transition-all border-b border-dashed border-[#e8dcc8] last:border-b-0 ${
                         isSelected
-                          ? "bg-blue-50 text-blue-700 font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
+                          ? "bg-[#fffef0] text-[#2d2416] font-bold border-l-4 border-[#c49a1a]"
+                          : "text-[#5c4d3c] hover:bg-[#f6f1e9] border-l-4 border-transparent"
                       }`}
                     >
-                      <div className="font-medium">{account.alias}</div>
-                      <div className="text-xs opacity-70">{account.provider}</div>
+                      <div className="font-bold text-base tracking-wide">{account.alias}</div>
+                      <div className="text-xs text-[#8b7355] uppercase tracking-[0.15em] mt-1">{account.provider}</div>
                     </button>
                   );
                 })}
@@ -137,130 +170,136 @@ export const Sidebar = ({
         )}
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto py-4">
-        {/* Data Section (only for selected account) */}
-        {selectedAccount && (
-          <>
-        <div className="px-3">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                데이터
-              </div>
-              <button
-                onClick={() => onNavigate?.("data-collection-test")}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                  activePage === "data-collection-test"
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                <Database className={`w-5 h-5 ${activePage === "data-collection-test" ? "text-gray-900" : "text-gray-500"}`} />
-                <span className="text-sm">실험용 수집기</span>
-              </button>
-              {selectedAccount.provider === "naver" && (
-                <>
-                  <button
-                    onClick={() => onNavigate?.(`expenditure-${selectedAccount.id}`)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                      activePage === `expenditure-${selectedAccount.id}`
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
-                  >
-                    <LayoutDashboard className={`w-5 h-5 ${activePage === `expenditure-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
-                    <span className="text-sm">지출 현황</span>
-                  </button>
-                  <button
-                    onClick={() => onNavigate?.(`transactions-${selectedAccount.id}`)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                      activePage === `transactions-${selectedAccount.id}`
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
-                  >
-                    <Receipt className={`w-5 h-5 ${activePage === `transactions-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
-                    <span className="text-sm">거래 목록 조회</span>
-                  </button>
-                  <button
-                    onClick={() => onNavigate?.(`data-collection-${selectedAccount.id}`)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                      activePage === `data-collection-${selectedAccount.id}`
-                        ? "bg-gray-100 text-gray-900 font-medium"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
-                  >
-                    <FileText className={`w-5 h-5 ${activePage === `data-collection-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
-                    <span className="text-sm">네이버 거래 내역</span>
-                  </button>
-                </>
-              )}
-              {selectedAccount.provider === "coupang" && (
-                <button
-                  onClick={() => onNavigate?.(`coupang-transactions-${selectedAccount.id}`)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                    activePage === `coupang-transactions-${selectedAccount.id}`
-                      ? "bg-gray-100 text-gray-900 font-medium"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  }`}
-                >
-                  <FileText className={`w-5 h-5 ${activePage === `coupang-transactions-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
-                  <span className="text-sm">쿠팡 거래 내역</span>
-                </button>
-              )}
+      {/* 스크롤 가능 콘텐츠 */}
+      <div className="flex-1 overflow-y-auto py-4 px-2">
+        {/* 지출 분석 섹션 (네이버 계정 선택시만) */}
+        {selectedAccount && selectedAccount.provider === "naver" && (
+          <div className="mb-5">
+            <div className={sectionHeaderClass} onClick={() => toggleSection("expenditure")}>
+              <span className="flex items-center gap-2">
+                <BarChart3 className="w-3.5 h-3.5" />
+                지출 분석
+              </span>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedSections.expenditure ? "rotate-90" : ""}`} />
             </div>
-
-        {/* Divider */}
-        <div className="my-4 px-3">
-          <div className="border-t border-gray-200"></div>
-        </div>
-          </>
+            
+            {expandedSections.expenditure && (
+              <div className="mt-2 space-y-1">
+                <button
+                  onClick={() => onNavigate?.(`expenditure-overview-${selectedAccount.id}`)}
+                  className={menuItemClass(activePage === `expenditure-overview-${selectedAccount.id}`)}
+                >
+                  <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left tracking-wide">종합 대시보드</span>
+                  <Zap className="w-3.5 h-3.5 text-[#c49a1a]" />
+                </button>
+                <button
+                  onClick={() => onNavigate?.(`expenditure-${selectedAccount.id}`)}
+                  className={menuItemClass(activePage === `expenditure-${selectedAccount.id}`)}
+                >
+                  <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left tracking-wide">월별 현황</span>
+                </button>
+                <button
+                  onClick={() => onNavigate?.(`transactions-${selectedAccount.id}`)}
+                  className={menuItemClass(activePage === `transactions-${selectedAccount.id}`)}
+                >
+                  <Receipt className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left tracking-wide">거래 목록</span>
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
-        {/* Tools Section */}
-          <div className="px-3">
-            <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-              도구
+        {/* 데이터 수집 섹션 */}
+        {selectedAccount && (
+          <div className="mb-5">
+            <div className={sectionHeaderClass} onClick={() => toggleSection("data")}>
+              <span className="flex items-center gap-2">
+                <FolderOpen className="w-3.5 h-3.5" />
+                데이터 수집
+              </span>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedSections.data ? "rotate-90" : ""}`} />
             </div>
-            <button
-              onClick={() => onNavigate?.("table-manager")}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                activePage === "table-manager"
-                  ? "bg-gray-100 text-gray-900 font-medium"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <Database className={`w-5 h-5 ${activePage === "table-manager" ? "text-gray-900" : "text-gray-500"}`} />
-              <span className="text-sm">테이블 관리</span>
-            </button>
-            <button
-            onClick={() => onNavigate?.("accounts")}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-              activePage === "accounts"
-                ? "bg-gray-100 text-gray-900 font-medium"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            }`}
-          >
-            <Users className={`w-5 h-5 ${activePage === "accounts" ? "text-gray-900" : "text-gray-500"}`} />
-            <span className="text-sm">계정 관리</span>
-          </button>
+            
+            {expandedSections.data && (
+              <div className="mt-2 space-y-1">
+                <button
+                  onClick={() => onNavigate?.("data-collection-test")}
+                  className={menuItemClass(activePage === "data-collection-test")}
+                >
+                  <Database className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left tracking-wide">실험용 수집기</span>
+                </button>
+                {selectedAccount.provider === "naver" && (
+                  <button
+                    onClick={() => onNavigate?.(`data-collection-${selectedAccount.id}`)}
+                    className={menuItemClass(activePage === `data-collection-${selectedAccount.id}`)}
+                  >
+                    <FileText className="w-4 h-4 flex-shrink-0" />
+                    <span className="flex-1 text-left tracking-wide">네이버 거래내역</span>
+                  </button>
+                )}
+                {selectedAccount.provider === "coupang" && (
+                  <button
+                    onClick={() => onNavigate?.(`coupang-transactions-${selectedAccount.id}`)}
+                    className={menuItemClass(activePage === `coupang-transactions-${selectedAccount.id}`)}
+                  >
+                    <FileText className="w-4 h-4 flex-shrink-0" />
+                    <span className="flex-1 text-left tracking-wide">쿠팡 거래내역</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 도구 섹션 */}
+        <div className="mb-5">
+          <div className={sectionHeaderClass} onClick={() => toggleSection("tools")}>
+            <span className="flex items-center gap-2">
+              <Wrench className="w-3.5 h-3.5" />
+              도구
+            </span>
+            <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedSections.tools ? "rotate-90" : ""}`} />
+          </div>
+          
+          {expandedSections.tools && (
+            <div className="mt-2 space-y-1">
+              <button
+                onClick={() => onNavigate?.("table-manager")}
+                className={menuItemClass(activePage === "table-manager")}
+              >
+                <Calculator className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1 text-left tracking-wide">테이블 관리</span>
+              </button>
+              <button
+                onClick={() => onNavigate?.("accounts")}
+                className={menuItemClass(activePage === "accounts")}
+              >
+                <Users className="w-4 h-4 flex-shrink-0" />
+                <span className="flex-1 text-left tracking-wide">계정 관리</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Bottom Menu */}
-      <div className="border-t border-gray-200 p-3">
-            <button
+      {/* 하단 메뉴 */}
+      <div className="border-t-2 border-[#2d2416] p-3 bg-[#f6f1e9]">
+        <button
           onClick={() => onNavigate?.("system")}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+          className={`w-full flex items-center gap-3 px-4 py-2.5 transition-all border-l-4 ${
             activePage === "system"
-                  ? "bg-gray-100 text-gray-900 font-medium"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-          <ServerCog className={`w-5 h-5 ${activePage === "system" ? "text-gray-900" : "text-gray-500"}`} />
-          <span className="text-sm">시스템 설정</span>
-            </button>
+              ? "bg-[#fffef0] text-[#2d2416] font-bold border-[#c49a1a] shadow-[inset_0_0_0_1px_#d4c4a8]"
+              : "text-[#5c4d3c] hover:bg-[#f0e6d6] hover:text-[#2d2416] border-transparent"
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          <span className="tracking-wide">시스템 설정</span>
+        </button>
       </div>
     </div>
   );
 };
-
