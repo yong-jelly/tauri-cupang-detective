@@ -25,11 +25,18 @@ const theme = createTheme({
   palette: {
     mode: "light",
     primary: {
-      main: "#2563eb",
+      main: "#2d2416",
+    },
+    secondary: {
+      main: "#c49a1a",
     },
     background: {
-      default: "#f9fafb",
-      paper: "#ffffff",
+      default: "#fffef0",
+      paper: "#f8f6f1",
+    },
+    text: {
+      primary: "#2d2416",
+      secondary: "#5c4d3c",
     },
   },
   typography: {
@@ -145,9 +152,9 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <div className="h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+        <div className="h-screen flex items-center justify-center bg-[#fffef0] text-[#5c4d3c]">
           <div className="inline-flex items-center gap-2 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin text-[#c49a1a]" />
             데이터베이스 상태를 확인하는 중...
           </div>
         </div>
@@ -159,7 +166,9 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-[#fffef0]">
+          {/* 타이틀바 드래그 영역 */}
+          <div className="titlebar-drag-region h-12 flex-shrink-0" data-tauri-drag-region />
           <SystemSettingsPage onReady={handleDbReady} />
         </div>
       </ThemeProvider>
@@ -171,9 +180,9 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <div className="h-screen flex items-center justify-center bg-gray-50 text-gray-600">
+        <div className="h-screen flex items-center justify-center bg-[#fffef0] text-[#5c4d3c]">
           <div className="inline-flex items-center gap-2 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin text-[#c49a1a]" />
             계정 정보를 확인하는 중...
           </div>
         </div>
@@ -186,7 +195,9 @@ function App() {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-[#fffef0]">
+          {/* 타이틀바 드래그 영역 */}
+          <div className="titlebar-drag-region h-12 flex-shrink-0" data-tauri-drag-region />
           <AccountOnboardingPage 
             showCloseButton={hasUsers === true}
             onClose={() => {
@@ -212,14 +223,16 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="flex h-screen overflow-hidden bg-gray-50">
+      <div className="app-shell bg-[#fffef0]">
         <Sidebar
           activePage={activePage}
           selectedAccountId={selectedAccountId}
           onNavigate={handleNavigate}
           onSelectAccount={handleSelectAccount}
         />
-        <main className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+        <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#f8f6f1]">
+          {/* 메인 영역 타이틀바 드래그 영역 */}
+          <div className="titlebar-drag-region h-12 flex-shrink-0 bg-[#f8f6f1] border-b border-[#2d2416]/5" data-tauri-drag-region />
           {activePage === "home" && <HomePage />}
           {activePage === "playground" && <PlaygroundPage />}
           {activePage === "settings" && <SettingsPage />}
