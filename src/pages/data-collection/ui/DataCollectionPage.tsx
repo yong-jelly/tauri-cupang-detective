@@ -19,7 +19,7 @@ interface PaymentItem {
     name: string;
     imgUrl?: string;
     infoUrl?: string;
-    price: number;
+    price?: number;
     restAmount: number;
   };
   date: number;
@@ -248,7 +248,7 @@ export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
       {/* Header */}
       <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">데이터 수집</h1>
+          <h1 className="text-xl font-semibold text-gray-900">데이터 수집 (네이버)</h1>
           <p className="text-sm text-gray-500">{account.alias} ({account.provider})</p>
         </div>
         <button
@@ -408,7 +408,7 @@ export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
                             <div className="text-xs text-gray-500">{item.merchantName}</div>
                           </td>
                           <td className="px-4 py-3 text-gray-900">
-                            ₩{item.product.price.toLocaleString()}
+                            ₩{item.product?.price?.toLocaleString() ?? '0'}
                           </td>
                           <td className="px-4 py-3">
                             <span

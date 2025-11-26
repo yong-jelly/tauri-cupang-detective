@@ -90,6 +90,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string | null>(null);
+  const [pendingPath, setPendingPath] = useState<string>("");
 
   useEffect(() => {
     getVersion().then(setVersion).catch(() => setVersion(null));
@@ -121,6 +122,12 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
+
+  useEffect(() => {
+    if (status?.path) {
+      setPendingPath(status.path);
+    }
+  }, [status?.path]);
 
   const selectExistingFile = async () => {
     try {
@@ -167,6 +174,26 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
       const result = await invoke<DbStatus>("init_db", { path: fullPath });
       updateStatus(result);
       setFeedback(`새 DB를 생성했습니다: ${fileName}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
+  const handleLoadDb = async () => {
+    if (!pendingPath.trim()) {
+      setError("경로를 입력해주세요.");
+      return;
+    }
+    try {
+      setBusyAction("load");
+      setError(null);
+      setFeedback(null);
+      const result = await invoke<DbStatus>("load_existing_db", { path: pendingPath.trim() });
+      updateStatus(result);
+      setFeedback("데이터베이스를 불러왔습니다.");
+      setPendingPath("");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

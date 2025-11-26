@@ -4,7 +4,8 @@ import { PlaygroundPage } from "@pages/playground";
 import { SettingsPage } from "@pages/settings";
 import { SystemSettingsPage } from "@pages/system";
 import { AccountOnboardingPage } from "@pages/onboarding";
-import { DataCollectionPage, NaverCollectionPage } from "@pages/data-collection";
+import { DataCollectionPage, NaverCollectionPage, CoupangCollectionPage, CoupangTransactionPage } from "@pages/data-collection";
+import { AccountManagementPage } from "@pages/accounts";
 import { TableManagerPage } from "@pages/table-manager";
 import { Sidebar } from "@widgets/sidebar";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
@@ -94,6 +95,15 @@ function App() {
     }
   }, [dbStatus, checkHasUsers]);
 
+  // 계정이 로드되면 첫 번째 계정을 자동 선택
+  useEffect(() => {
+    if (accounts.length > 0 && !selectedAccountId) {
+      const firstAccount = accounts[0];
+      setSelectedAccountId(firstAccount.id);
+      setActivePage(`data-collection-${firstAccount.id}`);
+    }
+  }, [accounts, selectedAccountId]);
+
   const handleDbReady = useCallback(
     (status: DbStatus) => {
       setDbStatus(status);
@@ -110,10 +120,8 @@ function App() {
 
   const handleNavigate = useCallback((page: string) => {
     setActivePage(page);
-    // 데이터 수집 페이지가 아닌 경우 계정 선택 해제
-    if (!page.startsWith("data-collection-")) {
-      setSelectedAccountId(null);
-    }
+    // 데이터 수집 페이지가 아닌 경우에도 계정 선택 유지 (도구 메뉴는 계정 선택 유지)
+    // 단, 시스템 설정이나 계정 관리 같은 경우는 계정 선택 해제하지 않음
   }, []);
 
   const handleSelectAccount = useCallback((accountId: string | null) => {
@@ -166,13 +174,24 @@ function App() {
     );
   }
 
-  // 계정이 없으면 온보딩 페이지 표시
-  if (!hasUsers) {
+  // 계정 추가 모드로 진입하거나 계정이 없는 경우 온보딩 페이지 표시
+  if (!hasUsers || activePage === "account-add") {
     return (
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <div className="min-h-screen flex flex-col">
-          <AccountOnboardingPage onComplete={handleOnboardingComplete} />
+          <AccountOnboardingPage 
+            onComplete={() => {
+              if (!hasUsers) {
+                handleOnboardingComplete();
+              } else {
+                // 이미 사용자가 있는 경우 계정 관리 페이지로 복귀
+                handleNavigate("accounts");
+                // 목록 갱신을 위해 loadAccounts 호출이 필요할 수 있음
+                loadAccounts(); 
+              }
+            }} 
+          />
         </div>
       </ThemeProvider>
     );
@@ -189,10 +208,13 @@ function App() {
           onNavigate={handleNavigate}
           onSelectAccount={handleSelectAccount}
         />
-        <main className="flex-1 flex flex-col h-full overflow-hidden">
+        <main className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
           {activePage === "home" && <HomePage />}
           {activePage === "playground" && <PlaygroundPage />}
           {activePage === "settings" && <SettingsPage />}
+          {activePage === "accounts" && (
+            <AccountManagementPage onAddAccount={() => handleNavigate("account-add")} />
+          )}
           {activePage === "system" && <SystemSettingsPage onReady={handleDbReady} />}
           {activePage === "table-manager" && <TableManagerPage />}
           {activePage === "data-collection-test" && selectedAccount && (
@@ -201,9 +223,14 @@ function App() {
           {activePage.startsWith("data-collection-") && activePage !== "data-collection-test" && selectedAccount && (
             selectedAccount.provider === 'naver' ? (
                <NaverCollectionPage account={selectedAccount} />
+            ) : selectedAccount.provider === 'coupang' ? (
+               <CoupangCollectionPage account={selectedAccount} />
             ) : (
                <DataCollectionPage account={selectedAccount} />
             )
+          )}
+          {activePage.startsWith("coupang-transactions-") && selectedAccount && (
+            <CoupangTransactionPage account={selectedAccount} />
           )}
         </main>
       </div>

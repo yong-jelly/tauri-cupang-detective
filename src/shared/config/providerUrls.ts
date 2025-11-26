@@ -11,8 +11,8 @@ export const PROVIDER_URL_PATTERNS: Record<string, ProviderUrlPattern> = {
     localPayDetailUrl: "https://orders.pay.naver.com/orderApi/orderSheet/detail/?orderNo={orderNo}",
   },
   coupang: {
-    listUrl: "",
-    detailUrl: "",
+    listUrl: "https://mc.coupang.com/ssr/api/myorders/model/page?requestYear=0&pageIndex=0&size=5",
+    detailUrl: "https://mc.coupang.com/ssr/desktop/order/{paymentId}",
     localPayDetailUrl: "",
   },
 };
@@ -22,7 +22,11 @@ export const buildListUrl = (provider: string, page: number): string => {
   if (!pattern || !pattern.listUrl) {
     throw new Error(`${provider}의 목록 URL 패턴이 설정되지 않았습니다.`);
   }
-  return pattern.listUrl.replace("{page}", String(page));
+  // 쿠팡은 page 파라미터를 사용하지 않거나, pageIndex 등의 다른 파라미터를 사용할 수 있음
+  // 여기서는 page 파라미터가 있으면 치환하고, 없으면 그대로 반환
+  return pattern.listUrl.includes("{page}") 
+    ? pattern.listUrl.replace("{page}", String(page))
+    : pattern.listUrl;
 };
 
 export const buildDetailUrl = (

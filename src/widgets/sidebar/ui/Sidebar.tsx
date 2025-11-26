@@ -1,15 +1,12 @@
 import { useEffect, useState, useRef } from "react";
 import {
-  LayoutDashboard,
-  Settings,
   ServerCog,
   Zap,
-  TrendingUp,
-  ShoppingCart,
-  Users,
   ChevronDown,
   ChevronUp,
   Database,
+  Users,
+  FileText,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -21,18 +18,6 @@ interface SidebarProps {
   onNavigate?: (page: string) => void;
   onSelectAccount?: (accountId: string | null) => void;
 }
-
-const menuItems = [
-  { id: "home", label: "대시보드", icon: LayoutDashboard },
-  { id: "transactions", label: "거래 내역", icon: ShoppingCart },
-  { id: "analytics", label: "분석", icon: TrendingUp },
-  { id: "accounts", label: "계정 관리", icon: Users },
-];
-
-const bottomMenuItems = [
-  { id: "settings", label: "계정 설정", icon: Settings },
-  { id: "system", label: "시스템 설정", icon: ServerCog },
-];
 
 export const Sidebar = ({
   activePage = "home",
@@ -132,7 +117,7 @@ export const Sidebar = ({
                   return (
                     <button
                       key={account.id}
-                      onClick={() => handleAccountSelect(isSelected ? null : account.id)}
+                      onClick={() => handleAccountSelect(account.id)}
                       className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
                         isSelected
                           ? "bg-blue-50 text-blue-700 font-medium"
@@ -144,17 +129,6 @@ export const Sidebar = ({
                     </button>
                   );
                 })}
-                {selectedAccountId && (
-                  <>
-                    <div className="border-t border-gray-200 my-1" />
-                    <button
-                      onClick={() => handleAccountSelect(null)}
-                      className="w-full text-left px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
-                    >
-                      계정 선택 해제
-                    </button>
-                  </>
-                )}
               </div>
             )}
           </div>
@@ -163,38 +137,25 @@ export const Sidebar = ({
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto py-4">
-        {/* Main Menu */}
+        {/* Data Section (only for selected account) */}
+        {selectedAccount && (
+          <>
         <div className="px-3">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activePage === item.id;
-            return (
+              <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                데이터
+              </div>
               <button
-                key={item.id}
-                onClick={() => onNavigate?.(item.id)}
+                onClick={() => onNavigate?.("data-collection-test")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                  isActive
+                  activePage === "data-collection-test"
                     ? "bg-gray-100 text-gray-900 font-medium"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "text-gray-900" : "text-gray-500"}`} />
-                <span className="text-sm">{item.label}</span>
+                <Database className={`w-5 h-5 ${activePage === "data-collection-test" ? "text-gray-900" : "text-gray-500"}`} />
+                <span className="text-sm">실험용 수집기</span>
               </button>
-            );
-          })}
-        </div>
-
-        {/* Data Collection Menu (only for selected account) */}
-        {selectedAccount && selectedAccount.provider === "naver" && (
-          <>
-            <div className="my-4 px-3">
-              <div className="border-t border-gray-200"></div>
-            </div>
-            <div className="px-3">
-              <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                데이터 수집
-              </div>
+              {selectedAccount.provider === "naver" && (
               <button
                 onClick={() => onNavigate?.(`data-collection-${selectedAccount.id}`)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
@@ -203,34 +164,37 @@ export const Sidebar = ({
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`}
               >
-                <Database className={`w-5 h-5 ${activePage === `data-collection-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
+                  <FileText className={`w-5 h-5 ${activePage === `data-collection-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
                 <span className="text-sm">네이버 거래 내역</span>
               </button>
+              )}
+              {selectedAccount.provider === "coupang" && (
+                <button
+                  onClick={() => onNavigate?.(`coupang-transactions-${selectedAccount.id}`)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
+                    activePage === `coupang-transactions-${selectedAccount.id}`
+                      ? "bg-gray-100 text-gray-900 font-medium"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <FileText className={`w-5 h-5 ${activePage === `coupang-transactions-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
+                  <span className="text-sm">쿠팡 거래 내역</span>
+                </button>
+              )}
             </div>
-          </>
-        )}
 
         {/* Divider */}
         <div className="my-4 px-3">
           <div className="border-t border-gray-200"></div>
         </div>
+          </>
+        )}
 
         {/* Tools Section */}
           <div className="px-3">
             <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
               도구
             </div>
-            <button
-              onClick={() => onNavigate?.("data-collection-test")}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                activePage === "data-collection-test"
-                  ? "bg-gray-100 text-gray-900 font-medium"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              }`}
-            >
-              <Database className={`w-5 h-5 ${activePage === "data-collection-test" ? "text-gray-900" : "text-gray-500"}`} />
-              <span className="text-sm">실험용 수집기</span>
-            </button>
             <button
               onClick={() => onNavigate?.("table-manager")}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
@@ -243,39 +207,32 @@ export const Sidebar = ({
               <span className="text-sm">테이블 관리</span>
             </button>
             <button
-              onClick={() => onNavigate?.("playground")}
+            onClick={() => onNavigate?.("accounts")}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-              activePage === "playground"
+              activePage === "accounts"
                 ? "bg-gray-100 text-gray-900 font-medium"
                 : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
             }`}
           >
-            <Zap className={`w-5 h-5 ${activePage === "playground" ? "text-gray-900" : "text-gray-500"}`} />
-            <span className="text-sm">Playground</span>
+            <Users className={`w-5 h-5 ${activePage === "accounts" ? "text-gray-900" : "text-gray-500"}`} />
+            <span className="text-sm">계정 관리</span>
           </button>
         </div>
       </div>
 
       {/* Bottom Menu */}
       <div className="border-t border-gray-200 p-3">
-        {bottomMenuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activePage === item.id;
-          return (
             <button
-              key={item.id}
-              onClick={() => onNavigate?.(item.id)}
+          onClick={() => onNavigate?.("system")}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                isActive
+            activePage === "system"
                   ? "bg-gray-100 text-gray-900 font-medium"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               }`}
             >
-              <Icon className={`w-5 h-5 ${isActive ? "text-gray-900" : "text-gray-500"}`} />
-              <span className="text-sm">{item.label}</span>
+          <ServerCog className={`w-5 h-5 ${activePage === "system" ? "text-gray-900" : "text-gray-500"}`} />
+          <span className="text-sm">시스템 설정</span>
             </button>
-          );
-        })}
       </div>
     </div>
   );

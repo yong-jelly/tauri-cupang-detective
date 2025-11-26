@@ -216,6 +216,56 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         
         CREATE UNIQUE INDEX IF NOT EXISTS ux_naver_payment_item_payment_line 
             ON tbl_naver_payment_item (payment_id, line_no);
+        
+        -- 쿠팡 결제 정보 테이블
+        CREATE TABLE IF NOT EXISTS tbl_coupang_payment (
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id                 TEXT NOT NULL,
+            order_id                TEXT NOT NULL,
+            external_id             TEXT,
+            status_code             TEXT,
+            status_text             TEXT,
+            status_color            TEXT,
+            ordered_at              TEXT NOT NULL,
+            merchant_name           TEXT NOT NULL,
+            merchant_tel            TEXT,
+            merchant_url            TEXT,
+            merchant_image_url      TEXT,
+            product_name            TEXT,
+            product_count           INTEGER,
+            product_detail_url      TEXT,
+            order_detail_url        TEXT,
+            total_amount            INTEGER NOT NULL,
+            discount_amount         INTEGER DEFAULT 0,
+            rest_amount             INTEGER,
+            created_at              TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at              TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(user_id) REFERENCES tbl_user(id) ON DELETE CASCADE
+        );
+        
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_order_id ON tbl_coupang_payment (order_id);
+        CREATE INDEX IF NOT EXISTS idx_coupang_payment_user_id ON tbl_coupang_payment (user_id);
+        
+        -- 쿠팡 결제 상세 항목 테이블
+        CREATE TABLE IF NOT EXISTS tbl_coupang_payment_item (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_id      INTEGER NOT NULL,
+            line_no         INTEGER NOT NULL,
+            product_name    TEXT NOT NULL,
+            image_url       TEXT,
+            info_url        TEXT,
+            quantity        INTEGER NOT NULL DEFAULT 1,
+            unit_price      INTEGER,
+            line_amount     INTEGER,
+            rest_amount     INTEGER,
+            memo            TEXT,
+            created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(payment_id) REFERENCES tbl_coupang_payment(id) ON DELETE CASCADE
+        );
+        
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_item_payment_line 
+            ON tbl_coupang_payment_item (payment_id, line_no);
     "#,
     )
     .map_err(|e| e.to_string())?;
@@ -522,6 +572,50 @@ struct NaverPayment {
     items: Vec<NaverPaymentItem>,
 }
 
+#[derive(Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CoupangPaymentItem {
+    line_no: i32,
+    product_name: String,
+    image_url: Option<String>,
+    info_url: Option<String>,
+    quantity: i32,
+    unit_price: Option<i64>,
+    line_amount: Option<i64>,
+    rest_amount: Option<i64>,
+    memo: Option<String>,
+}
+
+#[derive(Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CoupangPayment {
+    order_id: String,
+    external_id: Option<String>,
+    status_code: Option<String>,
+    status_text: Option<String>,
+    status_color: Option<String>,
+    ordered_at: String,
+    merchant_name: String,
+    merchant_tel: Option<String>,
+    merchant_url: Option<String>,
+    merchant_image_url: Option<String>,
+    product_name: Option<String>,
+    product_count: Option<i32>,
+    product_detail_url: Option<String>,
+    order_detail_url: Option<String>,
+    total_amount: i64,
+    discount_amount: Option<i64>,
+    rest_amount: Option<i64>,
+    items: Vec<CoupangPaymentItem>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CoupangLatestPayment {
+    order_id: String,
+    ordered_at: String,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct User {
@@ -725,6 +819,135 @@ fn save_naver_payment(
     Ok(())
 }
 
+#[tauri::command]
+fn save_coupang_payment(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+    payment: CoupangPayment,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let mut conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+
+    {
+        let now = Utc::now().to_rfc3339();
+        
+        // 1. 결제 정보 저장 (UPSERT)
+        tx.execute(
+            "INSERT INTO tbl_coupang_payment (
+                user_id, order_id, external_id, status_code, status_text, status_color,
+                ordered_at, merchant_name, merchant_tel, merchant_url, merchant_image_url,
+                product_name, product_count, product_detail_url, order_detail_url,
+                total_amount, discount_amount, rest_amount, created_at, updated_at
+            ) VALUES (
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20
+            )
+            ON CONFLICT(order_id) DO UPDATE SET
+                external_id = excluded.external_id,
+                status_code = excluded.status_code,
+                status_text = excluded.status_text,
+                status_color = excluded.status_color,
+                ordered_at = excluded.ordered_at,
+                merchant_name = excluded.merchant_name,
+                merchant_tel = excluded.merchant_tel,
+                merchant_url = excluded.merchant_url,
+                merchant_image_url = excluded.merchant_image_url,
+                product_name = excluded.product_name,
+                product_count = excluded.product_count,
+                product_detail_url = excluded.product_detail_url,
+                order_detail_url = excluded.order_detail_url,
+                total_amount = excluded.total_amount,
+                discount_amount = excluded.discount_amount,
+                rest_amount = excluded.rest_amount,
+                updated_at = excluded.updated_at",
+            rusqlite::params![
+                user_id, payment.order_id, payment.external_id, payment.status_code,
+                payment.status_text, payment.status_color, payment.ordered_at,
+                payment.merchant_name, payment.merchant_tel, payment.merchant_url,
+                payment.merchant_image_url, payment.product_name, payment.product_count,
+                payment.product_detail_url, payment.order_detail_url, payment.total_amount,
+                payment.discount_amount, payment.rest_amount, now, now
+            ],
+        ).map_err(|e| e.to_string())?;
+
+        // 저장된 결제의 ID 조회
+        let payment_pk: i64 = tx.query_row(
+            "SELECT id FROM tbl_coupang_payment WHERE order_id = ?1",
+            [payment.order_id.clone()],
+            |row| row.get(0),
+        ).map_err(|e| e.to_string())?;
+
+        // 2. 기존 결제 항목 UPSERT
+        for item in payment.items {
+            tx.execute(
+                "INSERT INTO tbl_coupang_payment_item (
+                    payment_id, line_no, product_name, image_url, info_url, quantity,
+                    unit_price, line_amount, rest_amount, memo, created_at, updated_at
+                ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12
+                )
+                ON CONFLICT(payment_id, line_no) DO UPDATE SET
+                    product_name = excluded.product_name,
+                    image_url = excluded.image_url,
+                    info_url = excluded.info_url,
+                    quantity = excluded.quantity,
+                    unit_price = excluded.unit_price,
+                    line_amount = excluded.line_amount,
+                    rest_amount = excluded.rest_amount,
+                    memo = excluded.memo,
+                    updated_at = excluded.updated_at",
+                rusqlite::params![
+                    payment_pk, item.line_no, item.product_name, item.image_url, item.info_url,
+                    item.quantity, item.unit_price, item.line_amount, item.rest_amount,
+                    item.memo, now, now
+                ],
+            ).map_err(|e| e.to_string())?;
+        }
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn get_last_coupang_payment(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+) -> Result<Option<CoupangLatestPayment>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT order_id, ordered_at 
+             FROM tbl_coupang_payment 
+             WHERE user_id = ?1 
+             ORDER BY ordered_at DESC 
+             LIMIT 1",
+        )
+        .map_err(|e| e.to_string())?;
+    let mut rows = stmt
+        .query(rusqlite::params![user_id])
+        .map_err(|e| e.to_string())?;
+    if let Some(row) = rows.next().map_err(|e| e.to_string())? {
+        Ok(Some(CoupangLatestPayment {
+            order_id: row.get(0).map_err(|e| e.to_string())?,
+            ordered_at: row.get(1).map_err(|e| e.to_string())?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -846,6 +1069,8 @@ pub fn run() {
             list_users,
             save_account,
             save_naver_payment,
+            save_coupang_payment,
+            get_last_coupang_payment,
             get_table_stats,
             truncate_table,
             get_table_data
