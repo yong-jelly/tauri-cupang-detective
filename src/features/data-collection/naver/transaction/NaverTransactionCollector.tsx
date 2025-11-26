@@ -1,9 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { buildListUrl, buildDetailUrl } from "@shared/config/providerUrls";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Loader2, Play, Pause, CheckCircle, AlertCircle, Clock } from "lucide-react";
-import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
+import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
+import { useBuildId } from "@features/data-collection/shared/hooks/useBuildId";
 
 // Rust 타입과 일치하는 인터페이스 정의
 interface NaverPaymentItem {
@@ -112,7 +113,8 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
     ]);
   };
 
-  const getHeaders = useCurlHeaders(account.curl);
+  const { getHeaders, loading: credentialsLoading, error: credentialsError } = useAccountCredentials(account);
+  const resolveBuildId = useBuildId(getHeaders);
 
   // 딜레이 함수
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -226,9 +228,13 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
     try {
       const headers = getHeaders();
       
-      // 1. 첫 페이지 조회하여 전체 페이지 수 확인
+      // 1. Build ID 추출
+      addLog("Build ID 추출 중...", "info", 1);
+      const buildId = await resolveBuildId(account.provider);
+      
+      // 2. 첫 페이지 조회하여 전체 페이지 수 확인
       addLog("페이지 정보 조회 중...", "info", 1);
-      const listUrl = buildListUrl(account.provider, 1);
+      const listUrl = buildListUrl(account.provider, 1, { buildId });
       const listResult = await invoke<ProxyResponse>("proxy_request", {
         url: listUrl,
         method: "GET",
@@ -258,7 +264,7 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
         // 페이지 목록 조회
         let pageItems: any[] = [];
         try {
-             const pageUrl = buildListUrl(account.provider, page);
+             const pageUrl = buildListUrl(account.provider, page, { buildId });
              const pageResult = await invoke<ProxyResponse>("proxy_request", {
                 url: pageUrl,
                 method: "GET",

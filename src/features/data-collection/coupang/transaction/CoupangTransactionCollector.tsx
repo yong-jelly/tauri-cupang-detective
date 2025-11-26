@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Play, Pause, CheckCircle, AlertCircle, Clock } from "lucide-react";
-import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
+import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
 
 // 쿠팡 주문 항목 인터페이스
 interface CoupangPaymentItem {
@@ -91,7 +91,7 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
     ]);
   };
 
-  const getHeaders = useCurlHeaders(account.curl);
+  const { getHeaders, loading: credentialsLoading, error: credentialsError } = useAccountCredentials(account);
 
   // 딜레이 함수
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

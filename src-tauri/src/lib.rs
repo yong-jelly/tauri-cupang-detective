@@ -423,7 +423,7 @@ fn get_table_data(
     }
 
     // 컬럼명 조회
-    let mut stmt = conn
+    let stmt = conn
         .prepare(&format!("SELECT * FROM {} LIMIT 0", table_name))
         .map_err(|e| e.to_string())?;
     let columns: Vec<String> = stmt
@@ -741,6 +741,97 @@ fn save_account(
 }
 
 #[tauri::command]
+fn delete_user(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    id: String,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    // CASCADE로 인해 credential도 자동 삭제됨
+    conn.execute("DELETE FROM tbl_user WHERE id = ?1", [id])
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn get_user_credentials(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+) -> Result<HashMap<String, String>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT key, value FROM tbl_credential WHERE user_id = ?1")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([user_id], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut credentials = HashMap::new();
+    for row in rows {
+        let (key, value) = row.map_err(|e| e.to_string())?;
+        credentials.insert(key, value);
+    }
+    Ok(credentials)
+}
+
+#[tauri::command]
+fn update_account_credentials(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+    curl: String,
+    headers: HashMap<String, String>,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    
+    // cURL 업데이트
+    conn.execute(
+        "UPDATE tbl_user SET curl = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![curl, now, user_id],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    // 기존 credential 삭제
+    conn.execute(
+        "DELETE FROM tbl_credential WHERE user_id = ?1",
+        [&user_id],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    // 새로운 헤더 정보를 tbl_credential에 저장
+    for (key, value) in headers {
+        let cred_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO tbl_credential (id, user_id, key, value, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![cred_id, user_id, key, value, now],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
+}
+
+#[tauri::command]
 fn save_naver_payment(
     app_handle: AppHandle,
     state: State<AppState>,
@@ -841,6 +932,138 @@ fn save_naver_payment(
 
     tx.commit().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NaverPaymentListItem {
+    id: i64,
+    pay_id: String,
+    external_id: Option<String>,
+    service_type: Option<String>,
+    status_code: Option<String>,
+    status_text: Option<String>,
+    status_color: Option<String>,
+    paid_at: String,
+    purchaser_name: Option<String>,
+    merchant_name: String,
+    product_name: Option<String>,
+    product_count: Option<i32>,
+    total_amount: i64,
+    discount_amount: Option<i64>,
+    items: Vec<NaverPaymentItem>,
+}
+
+#[tauri::command]
+fn list_naver_payments(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<NaverPaymentListItem>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    let limit = limit.unwrap_or(100);
+    let offset = offset.unwrap_or(0);
+    
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, pay_id, external_id, service_type, status_code, status_text, status_color,
+                    paid_at, purchaser_name, merchant_name, product_name, product_count,
+                    total_amount, discount_amount
+             FROM tbl_naver_payment
+             WHERE user_id = ?1
+               AND (service_type IS NULL OR service_type NOT IN ('BOOKING', 'CONTENTS'))
+             ORDER BY paid_at DESC
+             LIMIT ?2 OFFSET ?3"
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let rows = stmt
+        .query_map(rusqlite::params![user_id, limit, offset], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, Option<String>>(6)?,
+                row.get::<_, String>(7)?,
+                row.get::<_, Option<String>>(8)?,
+                row.get::<_, String>(9)?,
+                row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<i32>>(11)?,
+                row.get::<_, i64>(12)?,
+                row.get::<_, Option<i64>>(13)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut payments = Vec::new();
+    for row_result in rows {
+        let (id, pay_id, external_id, service_type, status_code, status_text, status_color,
+             paid_at, purchaser_name, merchant_name, product_name, product_count,
+             total_amount, discount_amount) = row_result.map_err(|e| e.to_string())?;
+        
+        // 상세 항목 조회
+        let mut item_stmt = conn
+            .prepare(
+                "SELECT line_no, product_name, image_url, info_url, quantity,
+                        unit_price, line_amount, rest_amount, memo
+                 FROM tbl_naver_payment_item
+                 WHERE payment_id = ?1
+                 ORDER BY line_no"
+            )
+            .map_err(|e| e.to_string())?;
+        
+        let item_rows = item_stmt
+            .query_map([id], |row| {
+                Ok(NaverPaymentItem {
+                    line_no: row.get(0)?,
+                    product_name: row.get(1)?,
+                    image_url: row.get(2)?,
+                    info_url: row.get(3)?,
+                    quantity: row.get(4)?,
+                    unit_price: row.get(5)?,
+                    line_amount: row.get(6)?,
+                    rest_amount: row.get(7)?,
+                    memo: row.get(8)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        
+        let mut items = Vec::new();
+        for item_result in item_rows {
+            items.push(item_result.map_err(|e| e.to_string())?);
+        }
+        
+        payments.push(NaverPaymentListItem {
+            id,
+            pay_id,
+            external_id,
+            service_type,
+            status_code,
+            status_text,
+            status_color,
+            paid_at,
+            purchaser_name,
+            merchant_name,
+            product_name,
+            product_count,
+            total_amount,
+            discount_amount,
+            items,
+        });
+    }
+    
+    Ok(payments)
 }
 
 #[tauri::command]
@@ -1092,7 +1315,11 @@ pub fn run() {
             has_users,
             list_users,
             save_account,
+            delete_user,
+            get_user_credentials,
+            update_account_credentials,
             save_naver_payment,
+            list_naver_payments,
             save_coupang_payment,
             get_last_coupang_payment,
             get_table_stats,

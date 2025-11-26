@@ -33,3 +33,35 @@ export type UserListResponse = {
 
 export type AccountProvider = "naver" | "coupang";
 
+export type CredentialMap = Record<string, string>;
+
+export type PaymentItem = {
+  lineNo: number;
+  productName: string;
+  imageUrl?: string | null;
+  infoUrl?: string | null;
+  quantity: number;
+  unitPrice?: number | null;
+  lineAmount?: number | null;
+  restAmount?: number | null;
+  memo?: string | null;
+};
+
+export type NaverPaymentListItem = {
+  id: number;
+  payId: string;
+  externalId?: string | null;
+  serviceType?: string | null;
+  statusCode?: string | null;
+  statusText?: string | null;
+  statusColor?: string | null;
+  paidAt: string;
+  purchaserName?: string | null;
+  merchantName: string;
+  productName?: string | null;
+  productCount?: number | null;
+  totalAmount: number;
+  discountAmount?: number | null;
+  items: PaymentItem[];
+};
+

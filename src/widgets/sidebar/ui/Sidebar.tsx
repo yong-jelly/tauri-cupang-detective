@@ -7,6 +7,7 @@ import {
   Database,
   Users,
   FileText,
+  Receipt,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -156,17 +157,30 @@ export const Sidebar = ({
                 <span className="text-sm">실험용 수집기</span>
               </button>
               {selectedAccount.provider === "naver" && (
-              <button
-                onClick={() => onNavigate?.(`data-collection-${selectedAccount.id}`)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
-                  activePage === `data-collection-${selectedAccount.id}`
-                    ? "bg-gray-100 text-gray-900 font-medium"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                }`}
-              >
-                  <FileText className={`w-5 h-5 ${activePage === `data-collection-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
-                <span className="text-sm">네이버 거래 내역</span>
-              </button>
+                <>
+                  <button
+                    onClick={() => onNavigate?.(`transactions-${selectedAccount.id}`)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
+                      activePage === `transactions-${selectedAccount.id}`
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    <Receipt className={`w-5 h-5 ${activePage === `transactions-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
+                    <span className="text-sm">거래 목록 조회</span>
+                  </button>
+                  <button
+                    onClick={() => onNavigate?.(`data-collection-${selectedAccount.id}`)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
+                      activePage === `data-collection-${selectedAccount.id}`
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    <FileText className={`w-5 h-5 ${activePage === `data-collection-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
+                    <span className="text-sm">네이버 거래 내역</span>
+                  </button>
+                </>
               )}
               {selectedAccount.provider === "coupang" && (
                 <button

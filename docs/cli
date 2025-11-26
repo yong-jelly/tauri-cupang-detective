@@ -57,6 +57,22 @@ bun run tauri android build
 bun run tauri ios build
 ```
 
+## 📚 Storybook
+
+컴포넌트 개발 및 문서화를 위한 Storybook 도구입니다.
+
+### 개발 서버 실행
+컴포넌트 스토리를 개발하고 테스트할 수 있는 개발 서버를 실행합니다 (포트 6006).
+```bash
+bun run storybook
+```
+
+### 프로덕션 빌드
+Storybook을 정적 사이트로 빌드합니다. `storybook-static` 디렉터리에 생성됩니다.
+```bash
+bun run build-storybook
+```
+
 ## 🎨 기타 유틸리티
 
 ### 아이콘 생성

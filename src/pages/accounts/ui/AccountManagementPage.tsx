@@ -1,68 +1,67 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { User, UserListResponse } from "@shared/api/types";
-import { Plus, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import type { User } from "@shared/api/types";
+import { useAccounts } from "@features/accounts/shared/hooks/useAccounts";
+import { useAccountTest } from "@features/accounts/shared/hooks/useAccountTest";
+import { AccountCard } from "@features/accounts/ui/AccountCard";
+import { AccountTestModal } from "@features/accounts/ui/AccountTestModal";
 
 interface AccountManagementPageProps {
   onAddAccount: () => void;
 }
 
 export const AccountManagementPage = ({ onAddAccount }: AccountManagementPageProps) => {
-  const [accounts, setAccounts] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { accounts, loading, error, loadAccounts, deleteAccount } = useAccounts();
+  const {
+    testLoading,
+    testResponse,
+    testError,
+    testRequestHeaders,
+    updatingCredentials,
+    runTest,
+    updateCredentials,
+    reset,
+  } = useAccountTest();
 
-  const loadAccounts = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await invoke<UserListResponse>("list_users");
-      setAccounts(result.users);
-    } catch (err) {
-      console.error("계정 목록 로드 실패:", err);
-      setError("계정 목록을 불러오는데 실패했습니다.");
-    } finally {
-      setLoading(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
+  const [testAccount, setTestAccount] = useState<User | null>(null);
+  const [activeTab, setActiveTab] = useState<"request" | "response">("request");
+
+  useEffect(() => {
+    loadAccounts();
+  }, [loadAccounts]);
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("정말로 이 계정을 삭제하시겠습니까?")) {
+      await deleteAccount(id);
+    }
+  };
+
+  const handleTest = (account: User) => {
+    setTestAccount(account);
+    setTestModalOpen(true);
+    reset();
+    setActiveTab("request");
+  };
+
+  const handleTestClose = () => {
+    setTestModalOpen(false);
+    setTestAccount(null);
+    reset();
+  };
+
+  const handleTestRetry = () => {
+    if (testAccount) {
+      runTest(testAccount);
     }
   };
 
   useEffect(() => {
-    loadAccounts();
-  }, []);
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("정말로 이 계정을 삭제하시겠습니까?")) return;
-
-    try {
-      await invoke("delete_user", { id });
-      await loadAccounts();
-    } catch (err) {
-      console.error("계정 삭제 실패:", err);
-      alert("계정 삭제에 실패했습니다.");
+    if (testModalOpen && testAccount && !testResponse && !testError) {
+      runTest(testAccount);
     }
-  };
-
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case "naver":
-        return "🟢";
-      case "coupang":
-        return "🟠";
-      default:
-        return "⚪";
-    }
-  };
-
-  const getProviderName = (provider: string) => {
-    switch (provider) {
-      case "naver":
-        return "네이버";
-      case "coupang":
-        return "쿠팡";
-      default:
-        return provider;
-    }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testModalOpen, testAccount]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
@@ -107,56 +106,36 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {accounts.map((account) => (
-              <div
+              <AccountCard
                 key={account.id}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow"
-              >
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl" role="img" aria-label={account.provider}>
-                        {getProviderIcon(account.provider)}
-                      </span>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{account.alias}</h3>
-                        <p className="text-xs text-gray-500">{getProviderName(account.provider)}</p>
-                      </div>
-                    </div>
-                    <button
-                        onClick={() => handleDelete(account.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
-                        title="계정 삭제"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">등록일</span>
-                      <span className="font-mono">
-                        {new Date(account.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-gray-500">인증 정보</span>
-                        <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">
-                            저장됨
-                        </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 flex justify-between items-center">
-                    <div className="text-xs text-gray-500 truncate flex-1 mr-4 font-mono" title={account.id}>
-                        ID: {account.id}
-                    </div>
-                </div>
-              </div>
+                account={account}
+                onDelete={handleDelete}
+                onTest={handleTest}
+              />
             ))}
           </div>
         )}
       </div>
+
+      {/* Test Modal */}
+      {testAccount && (
+        <AccountTestModal
+          account={testAccount}
+          isOpen={testModalOpen}
+          loading={testLoading}
+          response={testResponse}
+          error={testError}
+          requestHeaders={testRequestHeaders}
+          activeTab={activeTab}
+          updatingCredentials={updatingCredentials}
+          onClose={handleTestClose}
+          onRetry={handleTestRetry}
+          onUpdateCredentials={async (curl: string) => {
+            await updateCredentials(testAccount, curl);
+          }}
+          onTabChange={setActiveTab}
+        />
+      )}
     </div>
   );
 };

@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { buildDetailUrl } from "@shared/config/providerUrls";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Loader2, Play, Copy, Check } from "lucide-react";
-import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
+import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
 import { useClipboardCopy } from "@features/data-collection/shared/hooks/useClipboardCopy";
+import { useBuildId } from "@features/data-collection/shared/hooks/useBuildId";
 
 interface CoupangExperimentalCollectorProps {
   account: User;
@@ -49,13 +51,15 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
   const [listData, setListData] = useState<CoupangOrderListResponse | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const { copiedValue: copiedUrl, copy: copyToClipboard } = useClipboardCopy();
-  const getHeaders = useCurlHeaders(account.curl);
-
+  
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [detailData, setDetailData] = useState<any>(null);
   const [detailBuildId, setDetailBuildId] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  const { getHeaders, loading: credentialsLoading, error: credentialsError } = useAccountCredentials(account);
+  const resolveBuildId = useBuildId(getHeaders);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -94,34 +98,12 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
     try {
       const headers = getHeaders();
       
-      // 1. 먼저 HTML 페이지를 가져와서 Build ID 추출
-      const htmlUrl = `https://mc.coupang.com/ssr/desktop/order/${orderId}`;
-      const htmlResult = await invoke<ProxyResponse>("proxy_request", {
-        url: htmlUrl,
-        method: "GET",
-        headers,
-        body: null,
-      });
-
-      if (htmlResult.status < 200 || htmlResult.status >= 300) {
-        throw new Error(`HTML 페이지 조회 실패: HTTP ${htmlResult.status}`);
-      }
-
-      const html = htmlResult.body;
-        // Build ID 파싱
-        const buildIdMatch = html.match(/_next\/static\/([^\/]+)\/_buildManifest\.js/);
-      let buildId: string | null = null;
-      
-        if (buildIdMatch && buildIdMatch[1]) {
-        buildId = buildIdMatch[1];
+      // Build ID 추출 (공통 훅 사용)
+      const buildId = await resolveBuildId(account.provider, orderId);
         setDetailBuildId(buildId);
-        } else {
-          setDetailBuildId("Build ID를 찾을 수 없음");
-        throw new Error("Build ID를 찾을 수 없습니다");
-      }
 
-      // 2. Build ID를 사용하여 JSON API 호출
-      const jsonUrl = `https://mc.coupang.com/ssr/_next/data/${buildId}/desktop/order/${orderId}.json?orderId=${orderId}`;
+      // Build ID를 사용하여 JSON API 호출
+      const jsonUrl = buildDetailUrl(account.provider, orderId, undefined, undefined, { buildId });
       const jsonResult = await invoke<ProxyResponse>("proxy_request", {
         url: jsonUrl,
         method: "GET",
@@ -140,7 +122,7 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
     } finally {
       setDetailLoading(false);
     }
-  }, [getHeaders]);
+  }, [account.provider, getHeaders, resolveBuildId]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
@@ -226,14 +208,14 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                 <button
                   onClick={() =>
                     copyToClipboard(
-                      `https://mc.coupang.com/ssr/_next/data/${detailBuildId}/desktop/order/${selectedOrderId}.json?orderId=${selectedOrderId}`,
+                      buildDetailUrl(account.provider, selectedOrderId, undefined, undefined, { buildId: detailBuildId }),
                     )
                   }
                   className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
                   title="클릭하여 URL 복사"
                 >
                   {copiedUrl ===
-                  `https://mc.coupang.com/ssr/_next/data/${detailBuildId}/desktop/order/${selectedOrderId}.json?orderId=${selectedOrderId}` ? (
+                  buildDetailUrl(account.provider, selectedOrderId, undefined, undefined, { buildId: detailBuildId }) ? (
                     <>
                       <Check className="w-3 h-3" />
                       <span>복사됨</span>
@@ -261,7 +243,7 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-gray-600 font-medium">API URL:</span>
                         <code className="text-blue-700 flex-1 break-all text-right">
-                          https://mc.coupang.com/ssr/_next/data/{detailBuildId}/desktop/order/{selectedOrderId}.json?orderId={selectedOrderId}
+                          {buildDetailUrl(account.provider, selectedOrderId, undefined, undefined, { buildId: detailBuildId })}
                             </code>
                         </div>
                     </div>

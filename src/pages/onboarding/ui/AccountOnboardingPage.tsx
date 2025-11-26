@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { parseCurlCommand } from "@shared/lib/parseCurl";
 import type { AccountProvider, ProxyResponse } from "@shared/api/types";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
 
 type Step = "provider" | "alias" | "curl" | "success";
 
@@ -12,7 +12,13 @@ const PROVIDERS: Array<{ value: AccountProvider; label: string; icon: string; de
   { value: "coupang", label: "쿠팡", icon: "🟠", description: "쿠팡 주문 내역을 가져옵니다" },
 ];
 
-export const AccountOnboardingPage = ({ onComplete }: { onComplete: () => void }) => {
+interface AccountOnboardingPageProps {
+  onComplete: () => void;
+  showCloseButton?: boolean;
+  onClose?: () => void;
+}
+
+export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onClose }: AccountOnboardingPageProps) => {
   const [step, setStep] = useState<Step>("provider");
   const [provider, setProvider] = useState<AccountProvider | null>(null);
   const [alias, setAlias] = useState("");
@@ -97,6 +103,15 @@ export const AccountOnboardingPage = ({ onComplete }: { onComplete: () => void }
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center gap-6 overflow-hidden bg-gradient-to-br from-[#fff8f0] via-white to-[#f0f7ff]">
       <div className="absolute inset-0 bg-gradient-to-br from-[#fff8f0] via-white to-[#f0f7ff]" />
+      {showCloseButton && onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors z-10"
+          title="닫기"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
       <div className="relative max-w-2xl w-full space-y-6">
         {step === "provider" && (
           <>

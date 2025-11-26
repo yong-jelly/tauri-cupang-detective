@@ -1,0 +1,23 @@
+curl 'https://pay.naver.com/web-api/timeline/random-stamp/status' \
+  -H 'accept: application/json, text/plain, */*' \
+  -H 'accept-language: ko,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6,lus;q=0.5' \
+  -b 'NNB=GXI7O2DD75SGO; nstore_session=ssAtk+AbZ0yt7mf+2uEW1n9n; nstore_pagesession=jvgoFsqQibXI1ssKAKZ-077114; ASID=7958f64f000001970ead142400000023; NAC=HJLgBcAIz06h; m_loc=6f49fa71ff9eae5e5f2328d20c78a4c1915a0b9db1e58db5bdef74ef411fdde2; NV_WETR_LAST_ACCESS_RGN_M="MDkyMDA1MjA="; NV_WETR_LOCATION_RGN_M="MDkyMDA1MjA="; nid_inf=1446589520; NID_AUT=48qvM+vEWe3Ovp8VGhe5wVXBt7iJb4lTfz41BSu+31Nmne4DpB4wKIK0kG3O7skR; user_uuid=c708f8bd-06cf-4cf3-9cc0-42ce55c1f281; NACT=1; SRT30=1764166690; NID_SES=AAABvAZ78Pr3cpIFReyg/VLAtwCnuHUAJzpgSOF3yBYto9LeYXE4cfbRpkz/TKoDjj2ct+Ty6G18a2GzOJyc6BAbSxHlk7VrTOIrYgbJWA0yKxLd+UV2VO9ecvhiEaNJZV74VxsgDrutxaHqkVf2//oXkvmGDxwfwMqqhs0I6ItLKcCAiLntudYS+p2GDRkgm8EQsnFndDtTnjoXZ13Vu8o4crxrNYXgYtTSPIFqYgdDBP6o+0Mp+uBSND6M/LnUk7ulQvrjnDjM9shZkItatOvKqVBX7+dapq8ZkZTlS1t9yY8rX2bQuwM3OnVusHHsVGxrtsM6Z+NFzDn9JTL2bGeiGc4bUvu15FLvlxMRNSXcWDAD0F2KR44kbh1c6kW6kGPH9s55yDpsSKDErPixO+Q/fhP/U1EcXdPc/TRDYF7Ih+tSokKSfVNPNWmDvYu1x+wBlNlefNkdapp7KcW2DczKOK7oiz2+qfjw5hJVhuhCehJVkihgHoolF2d8odDW3+UJA1GHLj3rrWM8KYnMd0UEt9bRMwu+HO9vO+iGcI5A9GAkvAfMljP4zmJn+JBp+FxWdpTYfUTutf4qOBTCMSfe1tc=; SRT5=1764169190; BUC=MYm2SHF0gJVw8NTENt6ME1yZKZrAS4zRa2-0HRVPhz4=' \
+  -H 'priority: u=1, i' \
+  -H 'referer: https://pay.naver.com/pc/history?page=3' \
+  -H 'sec-ch-ua: "Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "macOS"' \
+  -H 'sec-fetch-dest: empty' \
+  -H 'sec-fetch-mode: cors' \
+  -H 'sec-fetch-site: same-origin' \
+  -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
+
+
+  {
+    "code": "success",
+    "data": {
+        "drawAmount": 0,
+        "totalStampCount": 0,
+        "drawAbleStampCount": 0
+    }
+}

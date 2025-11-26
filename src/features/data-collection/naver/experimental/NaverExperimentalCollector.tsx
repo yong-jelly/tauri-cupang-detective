@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { buildListUrl, buildDetailUrl } from "@shared/config/providerUrls";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Loader2, Play, ExternalLink, Copy, Check } from "lucide-react";
-import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
+import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
 import { useClipboardCopy } from "@features/data-collection/shared/hooks/useClipboardCopy";
+import { useBuildId } from "@features/data-collection/shared/hooks/useBuildId";
 
 interface PaymentItem {
   _id: string;
@@ -169,14 +170,16 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
   const [detailError, setDetailError] = useState<string | null>(null);
   const { copiedValue: copiedUrl, copy: copyToClipboard } = useClipboardCopy();
 
-  const getHeaders = useCurlHeaders(account.curl);
+  const { getHeaders, loading: credentialsLoading, error: credentialsError } = useAccountCredentials(account);
+  const resolveBuildId = useBuildId(getHeaders);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
     setListError(null);
     try {
       const headers = getHeaders();
-      const url = buildListUrl(account.provider, 1);
+      const buildId = await resolveBuildId(account.provider);
+      const url = buildListUrl(account.provider, 1, { buildId });
       const result = await invoke<ProxyResponse>("proxy_request", {
         url,
         method: "GET",
@@ -195,7 +198,7 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
     } finally {
       setLoading(false);
     }
-  }, [account.provider, getHeaders]);
+  }, [account.provider, getHeaders, resolveBuildId]);
 
   const fetchDetail = useCallback(
     async (paymentId: string, serviceType?: string, orderNo?: string) => {
@@ -206,6 +209,7 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
       setSelectedOrderNo(orderNo || null);
       try {
         const headers = getHeaders();
+        // 네이버 상세 URL은 buildId가 필요 없음 (orders.pay.naver.com은 별도 도메인)
         const url = buildDetailUrl(account.provider, paymentId, serviceType, orderNo);
         const result = await invoke<ProxyResponse>("proxy_request", {
           url,

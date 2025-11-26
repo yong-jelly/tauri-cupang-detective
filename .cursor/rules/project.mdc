@@ -26,3 +26,166 @@ alwaysApply: true
 # 코드 스타일 참고
 - Tailwind 클래스는 의미 단위별로 앞에서부터 `레이아웃 → 타이포 → 색상` 순으로 정렬한다.
 - fetch/네트워크 로직은 `shared/api` 혹은 도메인 `shared` 훅으로 옮기고, UI 컴포넌트 내부에서는 가급적 훅을 통해서만 호출한다.
+
+# 인증 정보 관리 및 사용
+
+## 중요: 인증 정보 소스의 통일
+
+**문제 상황:**
+- 계정의 인증 정보(헤더, 쿠키 등)를 사용할 때 두 가지 방법이 혼재되어 있었습니다:
+  1. `account.curl` 문자열을 파싱하여 헤더 추출 (`useCurlHeaders`)
+  2. DB의 `tbl_credential` 테이블에서 직접 조회 (`get_user_credentials` API)
+- "인증 테스트" 기능은 DB credential을 사용하지만, 데이터 수집 컴포넌트는 `account.curl`을 파싱했습니다.
+- 인증 정보 갱신 시 DB의 credential은 업데이트되지만, `account.curl` 문자열은 즉시 반영되지 않아 불일치가 발생했습니다.
+
+**해결 방법:**
+- **모든 데이터 수집 컴포넌트에서 `useAccountCredentials` 훅을 사용**하여 DB에서 최신 credential을 직접 가져옵니다.
+- `useCurlHeaders(account.curl)` 대신 `useAccountCredentials(account)`를 사용합니다.
+- 이렇게 하면 인증 정보 갱신 후에도 항상 최신 정보를 사용할 수 있습니다.
+
+**주의사항:**
+1. **항상 DB credential 사용**: `account.curl`을 파싱하는 대신 `useAccountCredentials` 훅을 사용해야 합니다.
+2. **인증 정보 갱신**: `update_account_credentials` API 호출 시 DB의 credential이 업데이트되므로, 이 훅을 사용하는 모든 컴포넌트는 자동으로 최신 정보를 사용합니다.
+3. **에러 처리**: credential 로드 실패 시 빈 객체를 반환하므로, 호출하는 컴포넌트에서 적절히 처리해야 합니다.
+
+**유사한 문제 발생 시 대처 방법:**
+1. **증상 확인**: 인증 관련 오류가 발생하면 먼저 "인증 테스트" 기능으로 확인합니다.
+2. **불일치 의심**: "인증 테스트"는 성공하지만 데이터 수집이 실패한다면, 인증 정보 소스의 불일치를 의심합니다.
+3. **소스 확인**: `account.curl` 파싱 대신 `useAccountCredentials` 훅을 사용하는지 확인합니다.
+4. **일관성 확인**: 모든 API 호출에서 동일한 credential 소스를 사용하는지 확인합니다.
+5. **로그 확인**: Build ID 추출 실패 시 HTML 응답이 로그인 페이지로 리다이렉트되었는지 확인합니다.
+
+**관련 파일:**
+- `src/features/data-collection/shared/hooks/useAccountCredentials.ts`: DB에서 credential을 가져오는 훅
+- `src/features/data-collection/shared/hooks/useCurlHeaders.ts`: (레거시) cURL 문자열 파싱 훅 (사용 금지)
+- `src/features/accounts/shared/hooks/useAccountTest.ts`: 인증 테스트 훅 (DB credential 사용)
+
+# 컴포넌트 설계 및 문서화
+
+## Storybook 사용 가이드
+
+### 설치 및 실행
+- Storybook은 컴포넌트 개발 및 문서화를 위한 도구입니다.
+- 개발 서버 실행: `npm run storybook` (포트 6006)
+- 빌드: `npm run build-storybook`
+
+### 스토리 파일 작성 규칙
+- 각 UI 컴포넌트는 동일 디렉터리에 `<ComponentName>.stories.tsx` 파일을 작성합니다.
+- 스토리 파일은 컴포넌트의 다양한 상태와 사용 사례를 보여줍니다.
+- 예시: `AccountCard.tsx` → `AccountCard.stories.tsx`
+
+### 스토리 구성 요소
+1. **Meta 설정**: 컴포넌트 메타데이터, 제목, 설명, 태그 등
+   - `title`: Storybook 사이드바에서 표시될 경로 (예: `Features/Accounts/AccountCard`)
+   - `component`: 대상 컴포넌트
+   - `parameters.docs.description.component`: 컴포넌트 설명
+   - `tags: ['autodocs']`: 자동 문서 생성 활성화
+
+2. **ArgTypes**: Props 설명 및 컨트롤 설정
+   - 각 prop의 타입, 설명, 기본값, 컨트롤 타입 정의
+   - `action`: 콜백 함수의 경우 `action` 사용
+
+3. **Story 객체**: 다양한 사용 사례
+   - 기본 스토리: 가장 일반적인 사용 사례
+   - 변형 스토리: 다양한 props 조합, 엣지 케이스, 상태별 예시
+   - Mock 데이터: 실제 데이터 구조를 따르는 샘플 데이터 사용
+
+### 스토리 작성 예시 패턴
+```typescript
+// 기본 스토리
+export const Default: Story = {
+  args: { /* 기본 props */ }
+};
+
+// 변형 스토리
+export const WithLongText: Story = {
+  args: { /* 긴 텍스트 케이스 */ }
+};
+
+export const WithoutOptionalProp: Story = {
+  args: { /* 선택적 prop 제외 케이스 */ }
+};
+```
+
+### 컴포넌트 설계 과정
+
+1. **요구사항 분석**
+   - 컴포넌트의 목적과 책임 범위 정의
+   - 사용되는 컨텍스트와 데이터 흐름 파악
+   - 재사용성과 확장성 고려
+
+2. **인터페이스 설계**
+   - Props 타입 정의 (`interface ComponentProps`)
+   - 필수/선택 props 구분
+   - 이벤트 핸들러 콜백 정의
+   - 타입 안정성 확보 (TypeScript)
+
+3. **구조 설계**
+   - 컴포넌트 계층 구조 (FSD 레이어 고려)
+   - 상태 관리 전략 (로컬 상태 vs 전역 상태)
+   - 의존성 분리 (UI 로직 vs 비즈니스 로직)
+
+4. **스타일링**
+   - Tailwind CSS 클래스 사용
+   - 클래스 순서: `레이아웃 → 타이포 → 색상`
+   - 반응형 디자인 고려
+   - 접근성 (a11y) 고려
+
+5. **스토리 작성**
+   - 다양한 사용 사례 시나리오 작성
+   - Mock 데이터 준비
+   - 인터랙션 테스트 (Controls, Actions)
+   - 문서화 (설명, 사용 예시)
+
+6. **통합 및 테스트**
+   - 실제 페이지에서 사용
+   - 에러 케이스 처리
+   - 성능 최적화 (필요시)
+
+### 컴포넌트 구성 원칙
+
+1. **단일 책임 원칙**
+   - 하나의 컴포넌트는 하나의 명확한 목적만 가집니다.
+   - 복잡한 컴포넌트는 더 작은 컴포넌트로 분리합니다.
+
+2. **Props 인터페이스 명확성**
+   - Props 이름은 직관적이고 의미가 명확해야 합니다.
+   - 필수/선택 props를 명확히 구분합니다.
+   - 기본값은 `defaultProps` 또는 기본 매개변수로 제공합니다.
+
+3. **의존성 최소화**
+   - 상위 레이어는 하위 레이어에만 의존합니다 (FSD 원칙).
+   - 비즈니스 로직은 훅으로 분리합니다.
+   - UI 컴포넌트는 가능한 한 순수 함수로 유지합니다.
+
+4. **재사용성 고려**
+   - 공통 컴포넌트는 `shared/ui`에 배치합니다.
+   - 도메인별 공통 컴포넌트는 `features/<domain>/shared/ui`에 배치합니다.
+   - Props를 통해 다양한 사용 사례를 지원합니다.
+
+5. **접근성 (a11y)**
+   - 시맨틱 HTML 사용
+   - 키보드 네비게이션 지원
+   - ARIA 속성 적절히 사용
+   - Storybook의 a11y addon으로 검증
+
+### 문서화 가이드
+
+1. **컴포넌트 문서 (MDX)**
+   - 복잡한 컴포넌트는 `.mdx` 파일로 상세 문서 작성
+   - 사용 예시, API 레퍼런스, 디자인 가이드 포함
+
+2. **인라인 주석**
+   - 자명하지 않은 비즈니스 로직에만 주석 추가
+   - 한글로 간결하게 작성
+
+3. **스토리 문서**
+   - 각 스토리에 의미 있는 이름 부여
+   - `parameters.docs.description`으로 설명 추가
+   - Controls를 통한 인터랙티브 문서화
+
+### 라이브러리 컴포넌트 문서화
+
+- 공유 라이브러리나 유틸리티 컴포넌트는 반드시 Storybook 스토리와 문서를 작성합니다.
+- `shared/ui` 또는 `features/*/shared/ui`의 컴포넌트는 우선적으로 문서화합니다.
+- 외부에 노출되는 컴포넌트는 사용 예시와 함께 문서화합니다.

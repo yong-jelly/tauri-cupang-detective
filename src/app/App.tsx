@@ -12,6 +12,7 @@ import {
 } from "@features/data-collection";
 import { AccountManagementPage } from "@pages/accounts";
 import { TableManagerPage } from "@pages/table-manager";
+import { TransactionListPage } from "@pages/transactions";
 import { Sidebar } from "@widgets/sidebar";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -186,6 +187,10 @@ function App() {
         <CssBaseline />
         <div className="min-h-screen flex flex-col">
           <AccountOnboardingPage 
+            showCloseButton={hasUsers === true}
+            onClose={() => {
+              handleNavigate("accounts");
+            }}
             onComplete={() => {
               if (!hasUsers) {
                 handleOnboardingComplete();
@@ -222,6 +227,9 @@ function App() {
           )}
           {activePage === "system" && <SystemSettingsPage onReady={handleDbReady} />}
           {activePage === "table-manager" && <TableManagerPage />}
+          {activePage.startsWith("transactions-") && selectedAccount && (
+            <TransactionListPage account={selectedAccount} />
+          )}
           {activePage === "data-collection-test" && selectedAccount && (
             selectedAccount.provider === "naver" ? (
               <NaverExperimentalCollector account={selectedAccount} />
