@@ -217,44 +217,59 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         CREATE UNIQUE INDEX IF NOT EXISTS ux_naver_payment_item_payment_line 
             ON tbl_naver_payment_item (payment_id, line_no);
         
-        -- 쿠팡 주문 정보 테이블 (상위 주문 단위)
+        -- 쿠팡 주문/결제 정보 테이블
         CREATE TABLE IF NOT EXISTS tbl_coupang_payment (
             -- 내부 PK
-            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id                 TEXT NOT NULL,         -- tbl_user(id) FK
+            id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id                     TEXT NOT NULL,         -- tbl_user(id) FK
 
             -- 쿠팡 주문 식별자들
-            order_id                TEXT NOT NULL,         -- orderId (예: 31100148961467)
-            external_id             TEXT,                  -- 외부 식별자 (현재는 orderId와 동일)
+            order_id                    TEXT NOT NULL,         -- orderId (예: 31100148961467)
+            external_id                 TEXT,                  -- 외부 식별자 (현재는 orderId와 동일)
 
             -- 상태 정보
-            status_code             TEXT,                  -- 주문 상태 코드 (예: "ORDERED", "CANCELED", "RECEIPTED")
-            status_text             TEXT,                  -- 주문 상태 텍스트 (예: "주문완료", "취소됨", "수령완료")
-            status_color            TEXT,                  -- 상태 표시 색상
+            status_code                 TEXT,                  -- 주문 상태 코드 (예: "ORDERED", "CANCELED", "RECEIPTED")
+            status_text                 TEXT,                  -- 주문 상태 텍스트 (예: "주문완료", "취소됨", "수령완료")
+            status_color                TEXT,                  -- 상태 표시 색상
 
             -- 주문 기본 정보
-            ordered_at              TEXT NOT NULL,         -- orderedAt (ISO8601 또는 Timestamp)
+            ordered_at                  TEXT NOT NULL,         -- orderedAt (ISO8601)
+            paid_at                     TEXT,                  -- 실제 결제 시간 (payment.paidAt)
             
             -- 가맹점 정보 (vendor)
-            merchant_name           TEXT NOT NULL,         -- vendor.vendorName 또는 title (대표 상품명)
-            merchant_tel            TEXT,                  -- vendor.repPhoneNum
-            merchant_url            TEXT,                  -- 판매자 URL
-            merchant_image_url      TEXT,                  -- 판매자 이미지 URL
+            merchant_name               TEXT NOT NULL,         -- vendor.vendorName 또는 title (대표 상품명)
+            merchant_tel                TEXT,                  -- vendor.repPhoneNum
+            merchant_url                TEXT,                  -- 판매자 URL
+            merchant_image_url          TEXT,                  -- 판매자 이미지 URL
 
             -- 주문 상품 요약 정보
-            product_name            TEXT,                  -- title (대표 상품명, 예: "[행복미트] 호주산 목초육...")
-            product_count           INTEGER,               -- 주문 상품 개수
-            product_detail_url      TEXT,                  -- 상품 상세 페이지 URL
-            order_detail_url        TEXT,                  -- 주문 상세 페이지 URL
+            product_name                TEXT,                  -- title (대표 상품명)
+            product_count               INTEGER,               -- 주문 상품 개수
+            product_detail_url          TEXT,                  -- 상품 상세 페이지 URL
+            order_detail_url            TEXT,                  -- 주문 상세 페이지 URL
 
             -- 금액 정보
-            total_amount            INTEGER NOT NULL,      -- totalProductPrice 또는 payment.totalPayedAmount (최종 결제 금액)
-            discount_amount         INTEGER DEFAULT 0,     -- 할인 금액
-            rest_amount             INTEGER,               -- 남은 금액/환불 잔액
+            total_amount                INTEGER NOT NULL,      -- payment.totalPayedAmount (최종 결제 금액)
+            total_order_amount          INTEGER,               -- payment.totalOrderAmount (총 주문 금액)
+            total_cancel_amount         INTEGER DEFAULT 0,     -- payment.totalCancelAmount (취소 금액)
+            discount_amount             INTEGER DEFAULT 0,     -- 할인 금액
+            rest_amount                 INTEGER,               -- 남은 금액/환불 잔액
+
+            -- 결제 수단 정보
+            main_pay_type               TEXT,                  -- payment.mainPayType (ROCKET_BALANCE, CARD 등)
+            pay_rocket_balance_amount   INTEGER DEFAULT 0,     -- 쿠페이머니 결제 금액
+            pay_card_amount             INTEGER DEFAULT 0,     -- 카드 결제 금액
+            pay_coupon_amount           INTEGER DEFAULT 0,     -- 쿠폰 결제 금액
+            pay_coupang_cash_amount     INTEGER DEFAULT 0,     -- 쿠팡캐시 결제 금액
+            pay_rocket_bank_amount      INTEGER DEFAULT 0,     -- 로켓뱅크 결제 금액
+
+            -- WOW 혜택 정보
+            wow_instant_discount        INTEGER DEFAULT 0,     -- WOW 즉시 할인 금액
+            reward_cash_amount          INTEGER DEFAULT 0,     -- 적립 예정 캐시
 
             -- 타임스탬프
-            created_at              TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at              TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at                  TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at                  TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY(user_id) REFERENCES tbl_user(id) ON DELETE CASCADE
         );
         
@@ -263,28 +278,37 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         
         -- 쿠팡 주문 상세 항목 테이블 (상품 단위)
         CREATE TABLE IF NOT EXISTS tbl_coupang_payment_item (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
             
             -- 상위 주문 FK
-            payment_id      INTEGER NOT NULL,              -- tbl_coupang_payment(id) FK
+            payment_id              INTEGER NOT NULL,              -- tbl_coupang_payment(id) FK
             
             -- 같은 주문 내 라인 번호 (1부터 부여)
-            line_no         INTEGER NOT NULL,
+            line_no                 INTEGER NOT NULL,
+
+            -- 쿠팡 상품 식별자
+            product_id              TEXT,                          -- productList[].productId
+            vendor_item_id          TEXT,                          -- productList[].vendorItemId
 
             -- 상품 정보
-            product_name    TEXT NOT NULL,                 -- productList[].productName
-            image_url       TEXT,                          -- productList[].imagePath
-            info_url        TEXT,                          -- 상품 상세 페이지 URL
-            quantity        INTEGER NOT NULL DEFAULT 1,    -- productList[].quantity (수량)
-            unit_price      INTEGER,                       -- productList[].unitPrice (단가)
-            line_amount     INTEGER,                       -- quantity * unit_price 또는 discountedUnitPrice
-            rest_amount     INTEGER,                       -- 상품 단위로 남은 금액 정보가 있으면 사용
+            product_name            TEXT NOT NULL,                 -- productList[].productName
+            image_url               TEXT,                          -- productList[].imagePath
+            info_url                TEXT,                          -- 상품 상세 페이지 URL
+            brand_name              TEXT,                          -- productList[].brandInfo.brandName
+            
+            -- 수량 및 금액
+            quantity                INTEGER NOT NULL DEFAULT 1,    -- productList[].quantity (수량)
+            unit_price              INTEGER,                       -- productList[].unitPrice (원래 단가)
+            discounted_unit_price   INTEGER,                       -- productList[].discountedUnitPrice (할인 단가)
+            combined_unit_price     INTEGER,                       -- productList[].combinedUnitPrice (최종 단가)
+            line_amount             INTEGER,                       -- quantity * combined_unit_price (최종 금액)
+            rest_amount             INTEGER,                       -- 상품 단위로 남은 금액 정보
 
             -- 확장용 메모/비고
-            memo            TEXT,
+            memo                    TEXT,
 
-            created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-            updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+            created_at              TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at              TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY(payment_id) REFERENCES tbl_coupang_payment(id) ON DELETE CASCADE
         );
         
@@ -293,6 +317,57 @@ fn run_migrations(path: &Path) -> Result<(), String> {
     "#,
     )
     .map_err(|e| e.to_string())?;
+
+    // 기존 테이블에 새 컬럼 추가 (마이그레이션)
+    migrate_coupang_tables(&conn)?;
+
+    Ok(())
+}
+
+// 쿠팡 테이블 마이그레이션: 기존 테이블에 새 컬럼 추가
+fn migrate_coupang_tables(conn: &Connection) -> Result<(), String> {
+    // tbl_coupang_payment에 새 컬럼 추가
+    let payment_columns = vec![
+        ("paid_at", "TEXT"),
+        ("total_order_amount", "INTEGER"),
+        ("total_cancel_amount", "INTEGER DEFAULT 0"),
+        ("main_pay_type", "TEXT"),
+        ("pay_rocket_balance_amount", "INTEGER DEFAULT 0"),
+        ("pay_card_amount", "INTEGER DEFAULT 0"),
+        ("pay_coupon_amount", "INTEGER DEFAULT 0"),
+        ("pay_coupang_cash_amount", "INTEGER DEFAULT 0"),
+        ("pay_rocket_bank_amount", "INTEGER DEFAULT 0"),
+        ("wow_instant_discount", "INTEGER DEFAULT 0"),
+        ("reward_cash_amount", "INTEGER DEFAULT 0"),
+    ];
+
+    for (col_name, col_type) in &payment_columns {
+        let sql = format!(
+            "ALTER TABLE tbl_coupang_payment ADD COLUMN {} {}",
+            col_name, col_type
+        );
+        // 컬럼이 이미 존재하면 에러가 발생하지만 무시
+        let _ = conn.execute(&sql, []);
+    }
+
+    // tbl_coupang_payment_item에 새 컬럼 추가
+    let item_columns = vec![
+        ("product_id", "TEXT"),
+        ("vendor_item_id", "TEXT"),
+        ("brand_name", "TEXT"),
+        ("discounted_unit_price", "INTEGER"),
+        ("combined_unit_price", "INTEGER"),
+    ];
+
+    for (col_name, col_type) in &item_columns {
+        let sql = format!(
+            "ALTER TABLE tbl_coupang_payment_item ADD COLUMN {} {}",
+            col_name, col_type
+        );
+        // 컬럼이 이미 존재하면 에러가 발생하지만 무시
+        let _ = conn.execute(&sql, []);
+    }
+
     Ok(())
 }
 
@@ -600,11 +675,16 @@ struct NaverPayment {
 #[serde(rename_all = "camelCase")]
 struct CoupangPaymentItem {
     line_no: i32,
+    product_id: Option<String>,
+    vendor_item_id: Option<String>,
     product_name: String,
     image_url: Option<String>,
     info_url: Option<String>,
+    brand_name: Option<String>,
     quantity: i32,
     unit_price: Option<i64>,
+    discounted_unit_price: Option<i64>,
+    combined_unit_price: Option<i64>,
     line_amount: Option<i64>,
     rest_amount: Option<i64>,
     memo: Option<String>,
@@ -619,6 +699,7 @@ struct CoupangPayment {
     status_text: Option<String>,
     status_color: Option<String>,
     ordered_at: String,
+    paid_at: Option<String>,
     merchant_name: String,
     merchant_tel: Option<String>,
     merchant_url: Option<String>,
@@ -628,8 +709,18 @@ struct CoupangPayment {
     product_detail_url: Option<String>,
     order_detail_url: Option<String>,
     total_amount: i64,
+    total_order_amount: Option<i64>,
+    total_cancel_amount: Option<i64>,
     discount_amount: Option<i64>,
     rest_amount: Option<i64>,
+    main_pay_type: Option<String>,
+    pay_rocket_balance_amount: Option<i64>,
+    pay_card_amount: Option<i64>,
+    pay_coupon_amount: Option<i64>,
+    pay_coupang_cash_amount: Option<i64>,
+    pay_rocket_bank_amount: Option<i64>,
+    wow_instant_discount: Option<i64>,
+    reward_cash_amount: Option<i64>,
     items: Vec<CoupangPaymentItem>,
 }
 
@@ -1088,11 +1179,14 @@ fn save_coupang_payment(
         tx.execute(
             "INSERT INTO tbl_coupang_payment (
                 user_id, order_id, external_id, status_code, status_text, status_color,
-                ordered_at, merchant_name, merchant_tel, merchant_url, merchant_image_url,
+                ordered_at, paid_at, merchant_name, merchant_tel, merchant_url, merchant_image_url,
                 product_name, product_count, product_detail_url, order_detail_url,
-                total_amount, discount_amount, rest_amount, created_at, updated_at
+                total_amount, total_order_amount, total_cancel_amount, discount_amount, rest_amount,
+                main_pay_type, pay_rocket_balance_amount, pay_card_amount, pay_coupon_amount,
+                pay_coupang_cash_amount, pay_rocket_bank_amount, wow_instant_discount, reward_cash_amount,
+                created_at, updated_at
             ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20
+                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31
             )
             ON CONFLICT(order_id) DO UPDATE SET
                 external_id = excluded.external_id,
@@ -1100,6 +1194,7 @@ fn save_coupang_payment(
                 status_text = excluded.status_text,
                 status_color = excluded.status_color,
                 ordered_at = excluded.ordered_at,
+                paid_at = excluded.paid_at,
                 merchant_name = excluded.merchant_name,
                 merchant_tel = excluded.merchant_tel,
                 merchant_url = excluded.merchant_url,
@@ -1109,16 +1204,30 @@ fn save_coupang_payment(
                 product_detail_url = excluded.product_detail_url,
                 order_detail_url = excluded.order_detail_url,
                 total_amount = excluded.total_amount,
+                total_order_amount = excluded.total_order_amount,
+                total_cancel_amount = excluded.total_cancel_amount,
                 discount_amount = excluded.discount_amount,
                 rest_amount = excluded.rest_amount,
+                main_pay_type = excluded.main_pay_type,
+                pay_rocket_balance_amount = excluded.pay_rocket_balance_amount,
+                pay_card_amount = excluded.pay_card_amount,
+                pay_coupon_amount = excluded.pay_coupon_amount,
+                pay_coupang_cash_amount = excluded.pay_coupang_cash_amount,
+                pay_rocket_bank_amount = excluded.pay_rocket_bank_amount,
+                wow_instant_discount = excluded.wow_instant_discount,
+                reward_cash_amount = excluded.reward_cash_amount,
                 updated_at = excluded.updated_at",
             rusqlite::params![
                 user_id, payment.order_id, payment.external_id, payment.status_code,
-                payment.status_text, payment.status_color, payment.ordered_at,
+                payment.status_text, payment.status_color, payment.ordered_at, payment.paid_at,
                 payment.merchant_name, payment.merchant_tel, payment.merchant_url,
                 payment.merchant_image_url, payment.product_name, payment.product_count,
                 payment.product_detail_url, payment.order_detail_url, payment.total_amount,
-                payment.discount_amount, payment.rest_amount, now, now
+                payment.total_order_amount, payment.total_cancel_amount, payment.discount_amount,
+                payment.rest_amount, payment.main_pay_type, payment.pay_rocket_balance_amount,
+                payment.pay_card_amount, payment.pay_coupon_amount, payment.pay_coupang_cash_amount,
+                payment.pay_rocket_bank_amount, payment.wow_instant_discount, payment.reward_cash_amount,
+                now, now
             ],
         ).map_err(|e| e.to_string())?;
 
@@ -1129,29 +1238,36 @@ fn save_coupang_payment(
             |row| row.get(0),
         ).map_err(|e| e.to_string())?;
 
-        // 2. 기존 결제 항목 UPSERT
+        // 2. 결제 항목 UPSERT
         for item in payment.items {
             tx.execute(
                 "INSERT INTO tbl_coupang_payment_item (
-                    payment_id, line_no, product_name, image_url, info_url, quantity,
-                    unit_price, line_amount, rest_amount, memo, created_at, updated_at
+                    payment_id, line_no, product_id, vendor_item_id, product_name, image_url, info_url,
+                    brand_name, quantity, unit_price, discounted_unit_price, combined_unit_price,
+                    line_amount, rest_amount, memo, created_at, updated_at
                 ) VALUES (
-                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12
+                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17
                 )
                 ON CONFLICT(payment_id, line_no) DO UPDATE SET
+                    product_id = excluded.product_id,
+                    vendor_item_id = excluded.vendor_item_id,
                     product_name = excluded.product_name,
                     image_url = excluded.image_url,
                     info_url = excluded.info_url,
+                    brand_name = excluded.brand_name,
                     quantity = excluded.quantity,
                     unit_price = excluded.unit_price,
+                    discounted_unit_price = excluded.discounted_unit_price,
+                    combined_unit_price = excluded.combined_unit_price,
                     line_amount = excluded.line_amount,
                     rest_amount = excluded.rest_amount,
                     memo = excluded.memo,
                     updated_at = excluded.updated_at",
                 rusqlite::params![
-                    payment_pk, item.line_no, item.product_name, item.image_url, item.info_url,
-                    item.quantity, item.unit_price, item.line_amount, item.rest_amount,
-                    item.memo, now, now
+                    payment_pk, item.line_no, item.product_id, item.vendor_item_id, item.product_name,
+                    item.image_url, item.info_url, item.brand_name, item.quantity, item.unit_price,
+                    item.discounted_unit_price, item.combined_unit_price, item.line_amount,
+                    item.rest_amount, item.memo, now, now
                 ],
             ).map_err(|e| e.to_string())?;
         }

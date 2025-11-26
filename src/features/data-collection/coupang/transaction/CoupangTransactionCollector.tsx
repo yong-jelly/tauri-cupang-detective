@@ -7,17 +7,22 @@ import { useAccountCredentials } from "@features/data-collection/shared/hooks/us
 // 쿠팡 주문 항목 인터페이스
 interface CoupangPaymentItem {
   lineNo: number;
+  productId?: string;
+  vendorItemId?: string;
   productName: string;
   imageUrl?: string;
   infoUrl?: string;
+  brandName?: string;
   quantity: number;
   unitPrice?: number;
+  discountedUnitPrice?: number;
+  combinedUnitPrice?: number;
   lineAmount?: number;
   restAmount?: number;
   memo?: string;
 }
 
-// 쿠팡 주문 인터페이스
+// 쿠팡 주문/결제 인터페이스
 interface CoupangPayment {
   orderId: string;
   externalId?: string;
@@ -25,6 +30,7 @@ interface CoupangPayment {
   statusText?: string;
   statusColor?: string;
   orderedAt: string;
+  paidAt?: string;
   merchantName: string;
   merchantTel?: string;
   merchantUrl?: string;
@@ -34,8 +40,18 @@ interface CoupangPayment {
   productDetailUrl?: string;
   orderDetailUrl?: string;
   totalAmount: number;
+  totalOrderAmount?: number;
+  totalCancelAmount?: number;
   discountAmount?: number;
   restAmount?: number;
+  mainPayType?: string;
+  payRocketBalanceAmount?: number;
+  payCardAmount?: number;
+  payCouponAmount?: number;
+  payCoupangCashAmount?: number;
+  payRocketBankAmount?: number;
+  wowInstantDiscount?: number;
+  rewardCashAmount?: number;
   items: CoupangPaymentItem[];
 }
 
@@ -198,16 +214,28 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
       if (orderEntity.deliveryGroupList) {
         let lineNo = 1;
         orderEntity.deliveryGroupList.forEach((group: any) => {
+          // vendor 정보 추출 (첫 번째 그룹에서)
+          if (lineNo === 1 && group.vendor) {
+            order.merchantTel = group.vendor.repPhoneNum || undefined;
+          }
+
           if (group.productList) {
             group.productList.forEach((product: any) => {
               order.items.push({
                 lineNo: lineNo++,
+                productId: product.productId ? String(product.productId) : undefined,
+                vendorItemId: product.vendorItemId ? String(product.vendorItemId) : undefined,
                 productName: product.productName,
                 imageUrl: product.imagePath || undefined,
+                brandName: product.brandInfo?.brandName || undefined,
                 quantity: product.quantity,
                 unitPrice: product.unitPrice,
-                lineAmount: product.combinedUnitPrice ? product.combinedUnitPrice * product.quantity : (product.unitPrice * product.quantity),
-                memo: product.brandInfo?.brandName || undefined,
+                discountedUnitPrice: product.discountedUnitPrice,
+                combinedUnitPrice: product.combinedUnitPrice,
+                lineAmount: product.combinedUnitPrice 
+                  ? product.combinedUnitPrice * product.quantity 
+                  : (product.unitPrice * product.quantity),
+                memo: product.vendorItemName || undefined,
               });
             });
           }
@@ -219,10 +247,46 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
         order.productCount = order.items.length;
       }
 
-      // 결제 정보 보강
+      // 결제 정보 파싱
       if (paymentEntity) {
-        if (paymentEntity.payedPayment?.rocketBankPayment) {
-          order.merchantName = paymentEntity.payedPayment.rocketBankPayment.bankName || order.merchantName;
+        order.paidAt = paymentEntity.paidAt ? new Date(paymentEntity.paidAt).toISOString() : undefined;
+        order.mainPayType = paymentEntity.mainPayType || undefined;
+        order.totalOrderAmount = paymentEntity.totalOrderAmount || undefined;
+        order.totalCancelAmount = paymentEntity.totalCancelAmount || undefined;
+
+        // 결제 수단별 금액 파싱
+        const payedPayment = paymentEntity.payedPayment;
+        if (payedPayment) {
+          // 쿠페이머니 (로켓잔액)
+          if (payedPayment.rocketBalancePayment?.payedPrice) {
+            order.payRocketBalanceAmount = payedPayment.rocketBalancePayment.payedPrice;
+          }
+          // 카드 결제
+          if (payedPayment.cardPayment?.payedPrice) {
+            order.payCardAmount = payedPayment.cardPayment.payedPrice;
+          }
+          // 쿠폰 결제
+          if (payedPayment.couponPayment?.payedPrice) {
+            order.payCouponAmount = payedPayment.couponPayment.payedPrice;
+          }
+          // 쿠팡캐시 결제
+          if (payedPayment.coupangCashPayment?.payedPrice) {
+            order.payCoupangCashAmount = payedPayment.coupangCashPayment.payedPrice;
+          }
+          // 로켓뱅크 결제
+          if (payedPayment.rocketBankPayment?.payedPrice) {
+            order.payRocketBankAmount = payedPayment.rocketBankPayment.payedPrice;
+          }
+        }
+
+        // WOW 혜택 정보
+        if (paymentEntity.wowBenefit?.instantDiscountPrice) {
+          order.wowInstantDiscount = paymentEntity.wowBenefit.instantDiscountPrice;
+        }
+
+        // 적립 예정 캐시
+        if (paymentEntity.rewardCash?.amount) {
+          order.rewardCashAmount = paymentEntity.rewardCash.amount;
         }
       }
 
@@ -333,6 +397,7 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
                   statusText: detail.statusText,
                   statusColor: detail.statusColor,
                   orderedAt: detail.orderedAt,
+                  paidAt: detail.paidAt,
                   merchantName: detail.merchantName,
                   merchantTel: detail.merchantTel,
                   merchantUrl: detail.merchantUrl,
@@ -342,15 +407,30 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
                   productDetailUrl: detail.productDetailUrl,
                   orderDetailUrl: detail.orderDetailUrl,
                   totalAmount: detail.totalAmount,
+                  totalOrderAmount: detail.totalOrderAmount,
+                  totalCancelAmount: detail.totalCancelAmount,
                   discountAmount: detail.discountAmount,
                   restAmount: detail.restAmount,
+                  mainPayType: detail.mainPayType,
+                  payRocketBalanceAmount: detail.payRocketBalanceAmount,
+                  payCardAmount: detail.payCardAmount,
+                  payCouponAmount: detail.payCouponAmount,
+                  payCoupangCashAmount: detail.payCoupangCashAmount,
+                  payRocketBankAmount: detail.payRocketBankAmount,
+                  wowInstantDiscount: detail.wowInstantDiscount,
+                  rewardCashAmount: detail.rewardCashAmount,
                   items: detail.items.map(item => ({
                     lineNo: item.lineNo,
+                    productId: item.productId,
+                    vendorItemId: item.vendorItemId,
                     productName: item.productName,
                     imageUrl: item.imageUrl,
                     infoUrl: item.infoUrl,
+                    brandName: item.brandName,
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,
+                    discountedUnitPrice: item.discountedUnitPrice,
+                    combinedUnitPrice: item.combinedUnitPrice,
                     lineAmount: item.lineAmount,
                     restAmount: item.restAmount,
                     memo: item.memo,
