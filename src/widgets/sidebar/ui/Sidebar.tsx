@@ -8,6 +8,7 @@ import {
   Users,
   FileText,
   Receipt,
+  LayoutDashboard,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -158,6 +159,17 @@ export const Sidebar = ({
               </button>
               {selectedAccount.provider === "naver" && (
                 <>
+                  <button
+                    onClick={() => onNavigate?.(`expenditure-${selectedAccount.id}`)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${
+                      activePage === `expenditure-${selectedAccount.id}`
+                        ? "bg-gray-100 text-gray-900 font-medium"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    <LayoutDashboard className={`w-5 h-5 ${activePage === `expenditure-${selectedAccount.id}` ? "text-gray-900" : "text-gray-500"}`} />
+                    <span className="text-sm">지출 현황</span>
+                  </button>
                   <button
                     onClick={() => onNavigate?.(`transactions-${selectedAccount.id}`)}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition-colors ${

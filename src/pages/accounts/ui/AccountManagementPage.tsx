@@ -33,7 +33,7 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
 
   const handleDelete = async (id: string) => {
     if (window.confirm("정말로 이 계정을 삭제하시겠습니까?")) {
-      await deleteAccount(id);
+    await deleteAccount(id);
     }
   };
 

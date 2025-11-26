@@ -22,7 +22,8 @@
     "@tauri-apps/plugin-opener": "^2",
     "lucide-react": "^0.554.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "recharts": "^3.5.0"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^4.1.3",
