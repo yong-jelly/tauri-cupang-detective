@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { parseCurlCommand } from "@shared/lib/parseCurl";
 import { buildListUrl, buildDetailUrl } from "@shared/config/providerUrls";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Loader2, Play, Pause, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
 
 // Rust 타입과 일치하는 인터페이스 정의
 interface NaverPaymentItem {
@@ -77,11 +77,11 @@ interface LogEntry {
   date?: string;
 }
 
-interface NaverCollectionPageProps {
+interface NaverTransactionCollectorProps {
   account: User;
 }
 
-export const NaverCollectionPage = ({ account }: NaverCollectionPageProps) => {
+export const NaverTransactionCollector = ({ account }: NaverTransactionCollectorProps) => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [progress, setProgress] = useState({ total: 0, current: 0, success: 0, failed: 0 });
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -112,10 +112,7 @@ export const NaverCollectionPage = ({ account }: NaverCollectionPageProps) => {
     ]);
   };
 
-  const parseCurlAndGetHeaders = useCallback(() => {
-    const parsed = parseCurlCommand(account.curl);
-    return parsed.headers;
-  }, [account.curl]);
+  const getHeaders = useCurlHeaders(account.curl);
 
   // 딜레이 함수
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -227,7 +224,7 @@ export const NaverCollectionPage = ({ account }: NaverCollectionPageProps) => {
     setProgress({ total: 0, current: 0, success: 0, failed: 0 });
     
     try {
-      const headers = parseCurlAndGetHeaders();
+      const headers = getHeaders();
       
       // 1. 첫 페이지 조회하여 전체 페이지 수 확인
       addLog("페이지 정보 조회 중...", "info", 1);

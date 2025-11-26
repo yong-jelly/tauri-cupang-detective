@@ -1,0 +1,28 @@
+---
+description: "Project-wide architecture, naming, and tooling standards"
+alwaysApply: true
+---
+
+# 구조 및 패턴 (FSD)
+- 기본 디렉터리 슬라이스는 `app -> processes -> pages -> widgets -> features -> entities -> shared` 순서를 따른다.
+- 도메인별 기능은 반드시 `src/features/<domain>/<purpose>` 아래에 배치하고, 각 목적은 `experimental`, `transaction`, `shared` 등 기능명으로 한 단계 더 분리한다.
+- 각 슬라이스에는 외부에 노출할 항목만 `index.ts`에서 re-export 하며, 상위 레이어는 반드시 하위 레이어에만 의존한다 (예: `widgets`는 `features`/`entities`/`shared`만 import).
+
+# 파일명 및 패키징
+- React 컴포넌트 파일은 PascalCase(`CoupangExperimentalCollector.tsx`)로, 훅/유틸은 camelCase(`useCurlHeaders.ts`)로 작성한다.
+- 동일 목적의 컴포넌트가 여러 도메인에 존재하면 `src/features/<domain>/<purpose>/<Domain><Purpose>.tsx` 패턴을 따른다.
+- 공유 로직은 `src/features/.../shared/` 또는 `src/shared/` 아래 훅·라이브러리로 추출하고, UI 컴포넌트가 아닌 코드는 기본적으로 `.ts` 확장자를 사용한다.
+
+# 주석 작성 가이드
+- 자명하지 않은 비즈니스 규칙, 복잡한 알고리즘, 외부 API 형식 설명에 대해서만 주석을 추가한다.
+- 주석은 해당 블록 바로 위에 한글로 작성하고, 한 문장으로 의도를 설명한다.
+- 타입 정의나 인터페이스에는 JSDoc 양식을 사용할 수 있으나, 중복 설명은 피한다.
+
+# 라이브러리 활용 우선순위
+- 비동기/상태 관련 커스텀 훅을 작성하기 전에 `@react-hookz/web` 제공 훅 사용 가능 여부를 먼저 검토한다.
+- `navigator.clipboard`, `ResizeObserver` 등 브라우저 API를 래핑할 때도 가능한 경우 `@react-hookz/web` 구현체를 우선 사용하고, 부족한 기능만 보강한다.
+- 새로 작성하는 공유 훅은 `@react-hookz/web` 인터페이스와 유사한 API를 유지해 교체 비용을 줄인다.
+
+# 코드 스타일 참고
+- Tailwind 클래스는 의미 단위별로 앞에서부터 `레이아웃 → 타이포 → 색상` 순으로 정렬한다.
+- fetch/네트워크 로직은 `shared/api` 혹은 도메인 `shared` 훅으로 옮기고, UI 컴포넌트 내부에서는 가급적 훅을 통해서만 호출한다.

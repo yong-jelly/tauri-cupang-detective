@@ -217,27 +217,42 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         CREATE UNIQUE INDEX IF NOT EXISTS ux_naver_payment_item_payment_line 
             ON tbl_naver_payment_item (payment_id, line_no);
         
-        -- 쿠팡 결제 정보 테이블
+        -- 쿠팡 주문 정보 테이블 (상위 주문 단위)
         CREATE TABLE IF NOT EXISTS tbl_coupang_payment (
+            -- 내부 PK
             id                      INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id                 TEXT NOT NULL,
-            order_id                TEXT NOT NULL,
-            external_id             TEXT,
-            status_code             TEXT,
-            status_text             TEXT,
-            status_color            TEXT,
-            ordered_at              TEXT NOT NULL,
-            merchant_name           TEXT NOT NULL,
-            merchant_tel            TEXT,
-            merchant_url            TEXT,
-            merchant_image_url      TEXT,
-            product_name            TEXT,
-            product_count           INTEGER,
-            product_detail_url      TEXT,
-            order_detail_url        TEXT,
-            total_amount            INTEGER NOT NULL,
-            discount_amount         INTEGER DEFAULT 0,
-            rest_amount             INTEGER,
+            user_id                 TEXT NOT NULL,         -- tbl_user(id) FK
+
+            -- 쿠팡 주문 식별자들
+            order_id                TEXT NOT NULL,         -- orderId (예: 31100148961467)
+            external_id             TEXT,                  -- 외부 식별자 (현재는 orderId와 동일)
+
+            -- 상태 정보
+            status_code             TEXT,                  -- 주문 상태 코드 (예: "ORDERED", "CANCELED", "RECEIPTED")
+            status_text             TEXT,                  -- 주문 상태 텍스트 (예: "주문완료", "취소됨", "수령완료")
+            status_color            TEXT,                  -- 상태 표시 색상
+
+            -- 주문 기본 정보
+            ordered_at              TEXT NOT NULL,         -- orderedAt (ISO8601 또는 Timestamp)
+            
+            -- 가맹점 정보 (vendor)
+            merchant_name           TEXT NOT NULL,         -- vendor.vendorName 또는 title (대표 상품명)
+            merchant_tel            TEXT,                  -- vendor.repPhoneNum
+            merchant_url            TEXT,                  -- 판매자 URL
+            merchant_image_url      TEXT,                  -- 판매자 이미지 URL
+
+            -- 주문 상품 요약 정보
+            product_name            TEXT,                  -- title (대표 상품명, 예: "[행복미트] 호주산 목초육...")
+            product_count           INTEGER,               -- 주문 상품 개수
+            product_detail_url      TEXT,                  -- 상품 상세 페이지 URL
+            order_detail_url        TEXT,                  -- 주문 상세 페이지 URL
+
+            -- 금액 정보
+            total_amount            INTEGER NOT NULL,      -- totalProductPrice 또는 payment.totalPayedAmount (최종 결제 금액)
+            discount_amount         INTEGER DEFAULT 0,     -- 할인 금액
+            rest_amount             INTEGER,               -- 남은 금액/환불 잔액
+
+            -- 타임스탬프
             created_at              TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at              TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY(user_id) REFERENCES tbl_user(id) ON DELETE CASCADE
@@ -246,19 +261,28 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_order_id ON tbl_coupang_payment (order_id);
         CREATE INDEX IF NOT EXISTS idx_coupang_payment_user_id ON tbl_coupang_payment (user_id);
         
-        -- 쿠팡 결제 상세 항목 테이블
+        -- 쿠팡 주문 상세 항목 테이블 (상품 단위)
         CREATE TABLE IF NOT EXISTS tbl_coupang_payment_item (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            payment_id      INTEGER NOT NULL,
+            
+            -- 상위 주문 FK
+            payment_id      INTEGER NOT NULL,              -- tbl_coupang_payment(id) FK
+            
+            -- 같은 주문 내 라인 번호 (1부터 부여)
             line_no         INTEGER NOT NULL,
-            product_name    TEXT NOT NULL,
-            image_url       TEXT,
-            info_url        TEXT,
-            quantity        INTEGER NOT NULL DEFAULT 1,
-            unit_price      INTEGER,
-            line_amount     INTEGER,
-            rest_amount     INTEGER,
+
+            -- 상품 정보
+            product_name    TEXT NOT NULL,                 -- productList[].productName
+            image_url       TEXT,                          -- productList[].imagePath
+            info_url        TEXT,                          -- 상품 상세 페이지 URL
+            quantity        INTEGER NOT NULL DEFAULT 1,    -- productList[].quantity (수량)
+            unit_price      INTEGER,                       -- productList[].unitPrice (단가)
+            line_amount     INTEGER,                       -- quantity * unit_price 또는 discountedUnitPrice
+            rest_amount     INTEGER,                       -- 상품 단위로 남은 금액 정보가 있으면 사용
+
+            -- 확장용 메모/비고
             memo            TEXT,
+
             created_at      TEXT NOT NULL DEFAULT (datetime('now')),
             updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
             FOREIGN KEY(payment_id) REFERENCES tbl_coupang_payment(id) ON DELETE CASCADE

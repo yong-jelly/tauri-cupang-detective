@@ -4,7 +4,12 @@ import { PlaygroundPage } from "@pages/playground";
 import { SettingsPage } from "@pages/settings";
 import { SystemSettingsPage } from "@pages/system";
 import { AccountOnboardingPage } from "@pages/onboarding";
-import { DataCollectionPage, NaverCollectionPage, CoupangCollectionPage, CoupangTransactionPage } from "@pages/data-collection";
+import {
+  NaverExperimentalCollector,
+  NaverTransactionCollector,
+  CoupangExperimentalCollector,
+  CoupangTransactionCollector,
+} from "@features/data-collection";
 import { AccountManagementPage } from "@pages/accounts";
 import { TableManagerPage } from "@pages/table-manager";
 import { Sidebar } from "@widgets/sidebar";
@@ -100,7 +105,7 @@ function App() {
     if (accounts.length > 0 && !selectedAccountId) {
       const firstAccount = accounts[0];
       setSelectedAccountId(firstAccount.id);
-      setActivePage(`data-collection-${firstAccount.id}`);
+      setActivePage("data-collection-test");
     }
   }, [accounts, selectedAccountId]);
 
@@ -127,8 +132,8 @@ function App() {
   const handleSelectAccount = useCallback((accountId: string | null) => {
     setSelectedAccountId(accountId);
     if (accountId) {
-      // 계정 선택 시 해당 계정의 데이터 수집 페이지로 이동
-      setActivePage(`data-collection-${accountId}`);
+      // 계정 선택 시 실험용 수집기 페이지로 이동
+      setActivePage("data-collection-test");
     }
   }, []);
 
@@ -218,19 +223,27 @@ function App() {
           {activePage === "system" && <SystemSettingsPage onReady={handleDbReady} />}
           {activePage === "table-manager" && <TableManagerPage />}
           {activePage === "data-collection-test" && selectedAccount && (
-            <DataCollectionPage account={selectedAccount} />
+            selectedAccount.provider === "naver" ? (
+              <NaverExperimentalCollector account={selectedAccount} />
+            ) : selectedAccount.provider === "coupang" ? (
+              <CoupangExperimentalCollector account={selectedAccount} />
+            ) : (
+              <div className="p-6 text-sm text-gray-500">현재 계정 도메인은 실험용 수집기를 지원하지 않습니다.</div>
+            )
           )}
           {activePage.startsWith("data-collection-") && activePage !== "data-collection-test" && selectedAccount && (
-            selectedAccount.provider === 'naver' ? (
-               <NaverCollectionPage account={selectedAccount} />
-            ) : selectedAccount.provider === 'coupang' ? (
-               <CoupangCollectionPage account={selectedAccount} />
+            selectedAccount.provider === "naver" ? (
+              <NaverTransactionCollector account={selectedAccount} />
             ) : (
-               <DataCollectionPage account={selectedAccount} />
+              <div className="p-6 text-sm text-gray-500">선택한 계정에서는 거래 내역 수집 기능을 사용할 수 없습니다.</div>
             )
           )}
           {activePage.startsWith("coupang-transactions-") && selectedAccount && (
-            <CoupangTransactionPage account={selectedAccount} />
+            selectedAccount.provider === "coupang" ? (
+              <CoupangTransactionCollector account={selectedAccount} />
+            ) : (
+              <div className="p-6 text-sm text-gray-500">선택한 계정에서는 쿠팡 거래 내역을 수집할 수 없습니다.</div>
+            )
           )}
         </main>
       </div>

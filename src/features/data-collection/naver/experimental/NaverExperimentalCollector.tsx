@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { parseCurlCommand } from "@shared/lib/parseCurl";
 import { buildListUrl, buildDetailUrl } from "@shared/config/providerUrls";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Loader2, Play, ExternalLink, Copy, Check } from "lucide-react";
+import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
+import { useClipboardCopy } from "@features/data-collection/shared/hooks/useClipboardCopy";
 
 interface PaymentItem {
   _id: string;
@@ -152,11 +153,11 @@ interface PaymentDetailResponse {
   };
 }
 
-interface DataCollectionPageProps {
+interface NaverExperimentalCollectorProps {
   account: User;
 }
 
-export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
+export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollectorProps) => {
   const [loading, setLoading] = useState(false);
   const [listData, setListData] = useState<PaymentListResponse | null>(null);
   const [listError, setListError] = useState<string | null>(null);
@@ -166,28 +167,15 @@ export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
   const [detailData, setDetailData] = useState<PaymentDetailResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const { copiedValue: copiedUrl, copy: copyToClipboard } = useClipboardCopy();
 
-  const parseCurlAndGetHeaders = useCallback(() => {
-    const parsed = parseCurlCommand(account.curl);
-    return parsed.headers;
-  }, [account.curl]);
-
-  const copyToClipboard = useCallback(async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedUrl(text);
-      setTimeout(() => setCopiedUrl(null), 2000);
-    } catch (err) {
-      console.error("클립보드 복사 실패:", err);
-    }
-  }, []);
+  const getHeaders = useCurlHeaders(account.curl);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
     setListError(null);
     try {
-      const headers = parseCurlAndGetHeaders();
+      const headers = getHeaders();
       const url = buildListUrl(account.provider, 1);
       const result = await invoke<ProxyResponse>("proxy_request", {
         url,
@@ -207,7 +195,7 @@ export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
     } finally {
       setLoading(false);
     }
-  }, [account.provider, parseCurlAndGetHeaders]);
+  }, [account.provider, getHeaders]);
 
   const fetchDetail = useCallback(
     async (paymentId: string, serviceType?: string, orderNo?: string) => {
@@ -217,7 +205,7 @@ export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
       setSelectedServiceType(serviceType || null);
       setSelectedOrderNo(orderNo || null);
       try {
-        const headers = parseCurlAndGetHeaders();
+        const headers = getHeaders();
         const url = buildDetailUrl(account.provider, paymentId, serviceType, orderNo);
         const result = await invoke<ProxyResponse>("proxy_request", {
           url,
@@ -238,7 +226,7 @@ export const DataCollectionPage = ({ account }: DataCollectionPageProps) => {
         setDetailLoading(false);
       }
     },
-    [account.provider, parseCurlAndGetHeaders],
+    [account.provider, getHeaders],
   );
 
   const items = listData?.pageProps?.dehydratedState?.queries?.[0]?.state?.data?.pages?.[0]?.items || [];

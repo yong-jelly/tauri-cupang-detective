@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { parseCurlCommand } from "@shared/lib/parseCurl";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Play, Pause, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
 
 // 쿠팡 주문 항목 인터페이스
 interface CoupangPaymentItem {
@@ -55,11 +55,11 @@ interface LogEntry {
   date?: string;
 }
 
-interface CoupangTransactionPageProps {
+interface CoupangTransactionCollectorProps {
   account: User;
 }
 
-export const CoupangTransactionPage = ({ account }: CoupangTransactionPageProps) => {
+export const CoupangTransactionCollector = ({ account }: CoupangTransactionCollectorProps) => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [progress, setProgress] = useState({ total: 0, current: 0, success: 0, failed: 0 });
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -91,10 +91,7 @@ export const CoupangTransactionPage = ({ account }: CoupangTransactionPageProps)
     ]);
   };
 
-  const parseCurlAndGetHeaders = useCallback(() => {
-    const parsed = parseCurlCommand(account.curl);
-    return parsed.headers;
-  }, [account.curl]);
+  const getHeaders = useCurlHeaders(account.curl);
 
   // 딜레이 함수
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -246,7 +243,7 @@ export const CoupangTransactionPage = ({ account }: CoupangTransactionPageProps)
     setBuildId(null); // 수집 시작 시 Build ID 초기화
     
     try {
-      const headers = parseCurlAndGetHeaders();
+      const headers = getHeaders();
       
       addLog("마지막 저장된 주문 조회 중...", "info", 0);
       const lastSaved = await invoke<LastCoupangPaymentInfo | null>("get_last_coupang_payment", {

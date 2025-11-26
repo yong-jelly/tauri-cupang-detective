@@ -193,12 +193,122 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_naver_payment_item_payment_line
 
 ---
 
+### tbl_coupang_payment
+쿠팡 주문 정보 (상위 주문 단위)
+
+```sql
+CREATE TABLE IF NOT EXISTS tbl_coupang_payment (
+    -- 내부 PK
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id                 TEXT NOT NULL,         -- tbl_user(id) FK
+
+    -- 쿠팡 주문 식별자들
+    order_id                TEXT NOT NULL,         -- orderId (예: 31100148961467)
+    external_id             TEXT,                  -- 외부 식별자 (현재는 orderId와 동일)
+
+    -- 상태 정보
+    status_code             TEXT,                  -- 주문 상태 코드 (예: "ORDERED", "CANCELED", "RECEIPTED")
+    status_text             TEXT,                  -- 주문 상태 텍스트 (예: "주문완료", "취소됨", "수령완료")
+    status_color            TEXT,                  -- 상태 표시 색상
+
+    -- 주문 기본 정보
+    ordered_at              TEXT NOT NULL,         -- orderedAt (ISO8601 또는 Timestamp)
+    
+    -- 가맹점 정보 (vendor)
+    merchant_name           TEXT NOT NULL,         -- vendor.vendorName 또는 title (대표 상품명)
+    merchant_tel            TEXT,                  -- vendor.repPhoneNum
+    merchant_url            TEXT,                  -- 판매자 URL
+    merchant_image_url      TEXT,                  -- 판매자 이미지 URL
+
+    -- 주문 상품 요약 정보
+    product_name            TEXT,                  -- title (대표 상품명, 예: "[행복미트] 호주산 목초육...")
+    product_count           INTEGER,               -- 주문 상품 개수
+    product_detail_url      TEXT,                  -- 상품 상세 페이지 URL
+    order_detail_url        TEXT,                  -- 주문 상세 페이지 URL
+
+    -- 금액 정보
+    total_amount            INTEGER NOT NULL,      -- totalProductPrice 또는 payment.totalPayedAmount (최종 결제 금액)
+    discount_amount         INTEGER DEFAULT 0,     -- 할인 금액
+    rest_amount             INTEGER,               -- 남은 금액/환불 잔액
+
+    -- 타임스탬프
+    created_at              TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at              TEXT NOT NULL DEFAULT (datetime('now')),
+
+    FOREIGN KEY(user_id) REFERENCES tbl_user(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_order_id ON tbl_coupang_payment (order_id);
+CREATE INDEX IF NOT EXISTS idx_coupang_payment_user_id ON tbl_coupang_payment (user_id);
+```
+
+**용도:**
+- 쿠팡 주문의 기본 정보 저장
+- 주문 ID 기준으로 중복 방지
+- 주문 상태, 금액, 판매자 정보 관리
+
+**예시 데이터:**
+- `order_id`: "31100148961467"
+- `merchant_name`: "행복미트" 또는 "[행복미트] 호주산 목초육..."
+- `total_amount`: 29900
+- `ordered_at`: "2025-10-28T12:30:32Z"
+
+---
+
+### tbl_coupang_payment_item
+쿠팡 주문 상세 항목 (상품 단위)
+
+```sql
+CREATE TABLE IF NOT EXISTS tbl_coupang_payment_item (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    
+    -- 상위 주문 FK
+    payment_id      INTEGER NOT NULL,              -- tbl_coupang_payment(id) FK
+    
+    -- 같은 주문 내 라인 번호 (1부터 부여)
+    line_no         INTEGER NOT NULL,
+
+    -- 상품 정보
+    product_name    TEXT NOT NULL,                 -- productList[].productName
+    image_url       TEXT,                          -- productList[].imagePath
+    info_url        TEXT,                          -- 상품 상세 페이지 URL
+    quantity        INTEGER NOT NULL DEFAULT 1,    -- productList[].quantity (수량)
+    unit_price      INTEGER,                       -- productList[].unitPrice (단가)
+    line_amount     INTEGER,                       -- quantity * unit_price 또는 discountedUnitPrice
+    rest_amount     INTEGER,                       -- 상품 단위로 남은 금액 정보가 있으면 사용
+
+    -- 확장용 메모/비고
+    memo            TEXT,
+
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
+
+    FOREIGN KEY(payment_id) REFERENCES tbl_coupang_payment(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_item_payment_line 
+    ON tbl_coupang_payment_item (payment_id, line_no);
+```
+
+**용도:**
+- 주문 내 개별 상품 정보 저장
+- 한 주문에 여러 상품이 포함된 경우 각 상품별로 저장
+- payment_id와 line_no 조합으로 유니크 제약
+
+**예시 데이터:**
+- `product_name`: "[행복미트] 호주산 목초육 소고기 사태살 조각 덩어리..."
+- `quantity`: 1
+- `unit_price`: 29900
+- `line_amount`: 29900
+
+---
+
 ## 인덱스
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_credential_user_id ON tbl_credential(user_id);
-CREATE INDEX IF NOT EXISTS idx_receipt_user_id ON tbl_receipt(user_id);
-CREATE INDEX IF NOT EXISTS idx_receipt_provider_order_id ON tbl_receipt(provider_order_id);
+CREATE INDEX IF NOT EXISTS idx_naver_payment_user_id ON tbl_naver_payment(user_id);
+CREATE INDEX IF NOT EXISTS idx_coupang_payment_user_id ON tbl_coupang_payment(user_id);
 ```
 
 ---

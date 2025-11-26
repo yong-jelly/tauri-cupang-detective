@@ -24,5 +24,9 @@
   - 테이블 관리 페이지 (`TableManagerPage`): 테이블 목록, 행 수 확인, 데이터 페이징 조회, 데이터 초기화(Truncate) 기능 구현.
   - Rust 백엔드: `get_table_stats`, `get_table_data`, `truncate_table` 커맨드 추가.
   - 앱 시작 시 DB 마이그레이션 자동 실행 로직 추가 (`get_db_status` 내 호출).
-- 03:53 · 
+
+## 2025-11-27
+- 00:30 · 데이터 수집 도메인 리팩토링: 네이버/쿠팡 실험용·거래 수집기를 `src/features/data-collection/<domain>/<purpose>` 구조로 이동하고 공용 훅(`useCurlHeaders`, `useClipboardCopy`) 분리.
+- 01:00 · `App.tsx` 라우팅 정리: 도메인별 Collector를 직접 import하여 실험용·거래 수집 화면이 계정 provider에 맞춰 표시되도록 개선.
+- 01:15 · Cursor Rules 설정 추가: `.cursor/rules/project.mdc`에 FSD 구조, 파일 네이밍, 주석 정책, `@react-hookz/web` 우선 사용 규칙 등을 문서화하여 전역 가이드로 적용.
 

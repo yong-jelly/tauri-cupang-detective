@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { parseCurlCommand } from "@shared/lib/parseCurl";
 import type { User, ProxyResponse } from "@shared/api/types";
 import { Loader2, Play, Copy, Check } from "lucide-react";
+import { useCurlHeaders } from "@features/data-collection/shared/hooks/useCurlHeaders";
+import { useClipboardCopy } from "@features/data-collection/shared/hooks/useClipboardCopy";
 
-interface CoupangCollectionPageProps {
+interface CoupangExperimentalCollectorProps {
   account: User;
 }
 
@@ -43,38 +44,24 @@ interface CoupangOrderListResponse {
   hasNext: boolean;
 }
 
-export const CoupangCollectionPage = ({ account }: CoupangCollectionPageProps) => {
+export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCollectorProps) => {
   const [loading, setLoading] = useState(false);
   const [listData, setListData] = useState<CoupangOrderListResponse | null>(null);
   const [listError, setListError] = useState<string | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
-  
+  const { copiedValue: copiedUrl, copy: copyToClipboard } = useClipboardCopy();
+  const getHeaders = useCurlHeaders(account.curl);
+
   const [detailLoading, setDetailLoading] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [detailData, setDetailData] = useState<any>(null);
   const [detailBuildId, setDetailBuildId] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
 
-  const parseCurlAndGetHeaders = useCallback(() => {
-    const parsed = parseCurlCommand(account.curl);
-    return parsed.headers;
-  }, [account.curl]);
-
-  const copyToClipboard = useCallback(async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedUrl(text);
-      setTimeout(() => setCopiedUrl(null), 2000);
-    } catch (err) {
-      console.error("클립보드 복사 실패:", err);
-    }
-  }, []);
-
   const fetchList = useCallback(async () => {
     setLoading(true);
     setListError(null);
     try {
-      const headers = parseCurlAndGetHeaders();
+      const headers = getHeaders();
       const url = "https://mc.coupang.com/ssr/api/myorders/model/page?requestYear=0&pageIndex=0&size=5";
 
       const result = await invoke<ProxyResponse>("proxy_request", {
@@ -95,7 +82,7 @@ export const CoupangCollectionPage = ({ account }: CoupangCollectionPageProps) =
     } finally {
       setLoading(false);
     }
-  }, [account.provider, account.curl, parseCurlAndGetHeaders]);
+  }, [account.provider, account.curl, getHeaders]);
 
   const fetchDetail = useCallback(async (orderId: string) => {
     setDetailLoading(true);
@@ -105,7 +92,7 @@ export const CoupangCollectionPage = ({ account }: CoupangCollectionPageProps) =
     setDetailBuildId(null);
 
     try {
-      const headers = parseCurlAndGetHeaders();
+      const headers = getHeaders();
       
       // 1. 먼저 HTML 페이지를 가져와서 Build ID 추출
       const htmlUrl = `https://mc.coupang.com/ssr/desktop/order/${orderId}`;
@@ -153,7 +140,7 @@ export const CoupangCollectionPage = ({ account }: CoupangCollectionPageProps) =
     } finally {
       setDetailLoading(false);
     }
-  }, [parseCurlAndGetHeaders]);
+  }, [getHeaders]);
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
