@@ -13,7 +13,9 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import type { User, NaverPaymentListItem } from "@shared/api/types";
+import type { User, NaverPaymentListItem, CoupangPaymentListItem } from "@shared/api/types";
+import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
+import { parseNaverPayments, parseCoupangPayments } from "@shared/lib/paymentParsers";
 import { processExpenditureData } from "../lib/utils";
 
 interface ExpenditureDashboardPageProps {
@@ -25,25 +27,36 @@ const RETRO_COLORS = ["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51", "#8
 export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPageProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [payments, setPayments] = useState<NaverPaymentListItem[]>([]);
+  const [payments, setPayments] = useState<UnifiedPayment[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
     const loadData = async () => {
-      if (account.provider !== "naver") {
-        setError("현재 네이버 계정만 지원됩니다.");
-        setLoading(false);
-        return;
-      }
-
       try {
-        const result = await invoke<NaverPaymentListItem[]>("list_naver_payments", {
-          userId: account.id,
-          limit: 2000, // 충분히 많은 데이터 조회
-          offset: 0,
-        });
-        setPayments(result);
+        let unifiedPayments: UnifiedPayment[] = [];
+        
+        if (account.provider === "naver") {
+          const result = await invoke<NaverPaymentListItem[]>("list_naver_payments", {
+            userId: account.id,
+            limit: 2000,
+            offset: 0,
+          });
+          unifiedPayments = parseNaverPayments(result);
+        } else if (account.provider === "coupang") {
+          const result = await invoke<CoupangPaymentListItem[]>("list_coupang_payments", {
+            userId: account.id,
+            limit: 2000,
+            offset: 0,
+          });
+          unifiedPayments = parseCoupangPayments(result);
+        } else {
+          setError("지원하지 않는 플랫폼입니다.");
+          setLoading(false);
+          return;
+        }
+        
+        setPayments(unifiedPayments);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -65,7 +78,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
   const availableMonths = useMemo(() => {
     const months = new Set<string>();
     payments.forEach((payment) => {
-      const date = new Date(payment.paidAt);
+      const date = new Date(payment.paid_at);
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
       months.add(key);
     });
@@ -82,7 +95,6 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
     if (availableMonths.length === 0) return false;
     const currentIndex = availableMonths.indexOf(currentMonthKey);
     if (currentIndex === -1) {
-      // 현재 선택된 월이 목록에 없으면 가장 가까운 이전 월로 이동 가능 여부 확인
       return availableMonths.some((m) => m < currentMonthKey);
     }
     return currentIndex > 0;
@@ -92,7 +104,6 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
     if (availableMonths.length === 0) return false;
     const currentIndex = availableMonths.indexOf(currentMonthKey);
     if (currentIndex === -1) {
-      // 현재 선택된 월이 목록에 없으면 가장 가까운 다음 월로 이동 가능 여부 확인
       return availableMonths.some((m) => m > currentMonthKey);
     }
     return currentIndex < availableMonths.length - 1;
@@ -105,7 +116,6 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
     let targetKey: string;
     
     if (currentIndex === -1) {
-      // 현재 월이 목록에 없으면 가장 가까운 이전 월 찾기
       const prevMonths = availableMonths.filter((m) => m < currentMonthKey);
       targetKey = prevMonths[prevMonths.length - 1];
     } else {
@@ -123,7 +133,6 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
     let targetKey: string;
     
     if (currentIndex === -1) {
-      // 현재 월이 목록에 없으면 가장 가까운 다음 월 찾기
       const nextMonths = availableMonths.filter((m) => m > currentMonthKey);
       targetKey = nextMonths[0];
     } else {
@@ -135,14 +144,12 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
   };
 
   const handleToday = () => {
-    // 오늘 날짜가 데이터 범위 내에 있는지 확인
     const today = new Date();
     const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
     
     if (availableMonths.includes(todayKey)) {
       setSelectedDate(today);
     } else if (availableMonths.length > 0) {
-      // 가장 최근 월로 이동
       const latestKey = availableMonths[availableMonths.length - 1];
       const [year, month] = latestKey.split("-").map(Number);
       setSelectedDate(new Date(year, month - 1, 1));
@@ -396,10 +403,10 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
                     } hover:bg-yellow-50/70`}
                   >
                     <td className="px-4 border-r border-gray-200 text-gray-600 align-middle">
-                      {payment.paidAt.substring(0, 10)}
+                      {payment.paid_at.substring(0, 10)}
                     </td>
                     <td className="px-4 border-r border-gray-200 text-gray-900 font-semibold align-middle truncate">
-                      {payment.productName || payment.merchantName}
+                      {payment.product_name || payment.merchant_name}
                       {payment.items.length > 1 && (
                         <span className="ml-2 text-xs text-gray-500 font-normal">
                           외 {payment.items.length - 1}건
@@ -407,7 +414,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
                       )}
                     </td>
                     <td className="px-4 text-right text-gray-900 font-bold align-middle">
-                      ₩{payment.totalAmount.toLocaleString()}
+                      ₩{payment.total_amount.toLocaleString()}
                     </td>
                   </tr>
                 ))}
@@ -436,4 +443,3 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
     </div>
   );
 };
-

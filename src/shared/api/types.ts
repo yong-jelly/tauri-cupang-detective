@@ -65,3 +65,44 @@ export type NaverPaymentListItem = {
   items: PaymentItem[];
 };
 
+export type CoupangPaymentItem = {
+  lineNo: number;
+  productId?: string | null;
+  vendorItemId?: string | null;
+  productName: string;
+  imageUrl?: string | null;
+  infoUrl?: string | null;
+  brandName?: string | null;
+  quantity: number;
+  unitPrice?: number | null;
+  discountedUnitPrice?: number | null;
+  combinedUnitPrice?: number | null;
+  lineAmount?: number | null;
+  restAmount?: number | null;
+  memo?: string | null;
+};
+
+export type CoupangPaymentListItem = {
+  id: number;
+  orderId: string;
+  externalId?: string | null;
+  statusCode?: string | null;
+  statusText?: string | null;
+  statusColor?: string | null;
+  orderedAt: string;
+  paidAt?: string | null;
+  merchantName: string;
+  merchantTel?: string | null;
+  merchantUrl?: string | null;
+  merchantImageUrl?: string | null;
+  productName?: string | null;
+  productCount?: number | null;
+  totalAmount: number;
+  totalOrderAmount?: number | null;
+  totalCancelAmount?: number | null;
+  discountAmount?: number | null;
+  restAmount?: number | null;
+  mainPayType?: string | null;
+  items: CoupangPaymentItem[];
+};
+

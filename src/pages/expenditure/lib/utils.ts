@@ -1,4 +1,4 @@
-import type { NaverPaymentListItem } from "@shared/api/types";
+import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
 
 export interface MonthlyStats {
   month: string;
@@ -45,13 +45,13 @@ export interface MonthlyStatsWithMA {
   volatility: number; // 변동성 (표준편차 기반)
 }
 
-// 월별 보기용 (기존 유지)
+// 월별 보기용 (UnifiedPayment 타입 사용)
 export const processExpenditureData = (
-  payments: NaverPaymentListItem[],
+  payments: UnifiedPayment[],
   selectedDate?: Date
 ) => {
   const sortedPayments = [...payments].sort(
-    (a, b) => new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime()
+    (a, b) => new Date(a.paid_at).getTime() - new Date(b.paid_at).getTime()
   );
 
   const monthlyData: Record<string, MonthlyStats> = {};
@@ -59,10 +59,10 @@ export const processExpenditureData = (
   const merchantData: Record<string, MerchantStats> = {};
   let totalAmount = 0;
   let filteredCount = 0;
-  const filteredPayments: NaverPaymentListItem[] = [];
+  const filteredPayments: UnifiedPayment[] = [];
 
   sortedPayments.forEach((payment) => {
-    const date = new Date(payment.paidAt);
+    const date = new Date(payment.paid_at);
     
     if (selectedDate) {
       const isSameYear = date.getFullYear() === selectedDate.getFullYear();
@@ -78,7 +78,7 @@ export const processExpenditureData = (
 
     const yearMonth = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}`;
     const dayKey = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
-    const amount = payment.totalAmount;
+    const amount = payment.total_amount;
 
     if (!monthlyData[yearMonth]) {
       monthlyData[yearMonth] = { month: yearMonth, amount: 0, count: 0 };
@@ -93,7 +93,7 @@ export const processExpenditureData = (
       dailyData[dayKey].amount += amount;
     }
 
-    const merchantName = payment.merchantName || "기타";
+    const merchantName = payment.merchant_name || "기타";
     if (!merchantData[merchantName]) {
       merchantData[merchantName] = { name: merchantName, amount: 0, count: 0, percentage: 0 };
     }
@@ -152,9 +152,9 @@ const calculateStdDev = (data: number[]): number => {
 };
 
 // 종합 대시보드용 (전체 기간 분석 + 금융 분석)
-export const processOverviewData = (payments: NaverPaymentListItem[]) => {
+export const processOverviewData = (payments: UnifiedPayment[]) => {
   const sortedPayments = [...payments].sort(
-    (a, b) => new Date(a.paidAt).getTime() - new Date(b.paidAt).getTime()
+    (a, b) => new Date(a.paid_at).getTime() - new Date(b.paid_at).getTime()
   );
 
   const monthlyData: Record<string, MonthlyStats> = {};
@@ -193,11 +193,11 @@ export const processOverviewData = (payments: NaverPaymentListItem[]) => {
   const lastQuarterYear = currentQuarter === 1 ? currentYear - 1 : currentYear;
 
   sortedPayments.forEach((payment) => {
-    const date = new Date(payment.paidAt);
+    const date = new Date(payment.paid_at);
     const year = date.getFullYear();
     const month = date.getMonth();
     const quarter = Math.floor(month / 3) + 1;
-    const amount = payment.totalAmount;
+    const amount = payment.total_amount;
 
     totalAmount += amount;
     totalCount++;
@@ -262,7 +262,7 @@ export const processOverviewData = (payments: NaverPaymentListItem[]) => {
     }
 
     // 가맹점별 집계
-    const merchantName = payment.merchantName || "기타";
+    const merchantName = payment.merchant_name || "기타";
     if (!merchantData[merchantName]) {
       merchantData[merchantName] = { name: merchantName, amount: 0, count: 0, percentage: 0 };
     }
@@ -448,14 +448,14 @@ export interface TopExpenseItem {
 
 // 분기별 고가 주문 랭킹 추출
 export const getQuarterlyTopExpenses = (
-  payments: NaverPaymentListItem[],
+  payments: UnifiedPayment[],
   topN: number = 3
 ): TopExpenseItem[] => {
   // 분기별로 그룹화
-  const quarterlyGroups: Record<string, NaverPaymentListItem[]> = {};
+  const quarterlyGroups: Record<string, UnifiedPayment[]> = {};
   
   payments.forEach((payment) => {
-    const date = new Date(payment.paidAt);
+    const date = new Date(payment.paid_at);
     const year = date.getFullYear();
     const quarter = Math.floor(date.getMonth() / 3) + 1;
     const key = `${year}Q${quarter}`;
@@ -478,7 +478,7 @@ export const getQuarterlyTopExpenses = (
       
       // 금액 기준 정렬 후 상위 N개
       const topItems = [...items]
-        .sort((a, b) => b.totalAmount - a.totalAmount)
+        .sort((a, b) => b.total_amount - a.total_amount)
         .slice(0, topN);
       
       topItems.forEach((item) => {
@@ -486,10 +486,10 @@ export const getQuarterlyTopExpenses = (
           quarter: key,
           year,
           quarterNum,
-          productName: item.productName || item.merchantName,
-          merchantName: item.merchantName,
-          amount: item.totalAmount,
-          paidAt: item.paidAt,
+          productName: item.product_name || item.merchant_name,
+          merchantName: item.merchant_name,
+          amount: item.total_amount,
+          paidAt: item.paid_at,
         });
       });
     });

@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2, ChevronDown, ChevronRight, Receipt } from "lucide-react";
-import type { User, NaverPaymentListItem } from "@shared/api/types";
+import type { User, NaverPaymentListItem, CoupangPaymentListItem } from "@shared/api/types";
+import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
+import { parseNaverPayments, parseCoupangPayments } from "@shared/lib/paymentParsers";
 import React from "react";
 
 interface TransactionListPageProps {
@@ -9,28 +11,40 @@ interface TransactionListPageProps {
 }
 
 export const TransactionListPage = ({ account }: TransactionListPageProps) => {
-  const [payments, setPayments] = useState<NaverPaymentListItem[]>([]);
+  const [payments, setPayments] = useState<UnifiedPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedPayments, setExpandedPayments] = useState<Set<number>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   const loadPayments = useCallback(async () => {
-    if (account.provider !== "naver") {
-      setError("네이버 계정만 지원됩니다.");
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
+    
     try {
-      const result = await invoke<NaverPaymentListItem[]>("list_naver_payments", {
-        userId: account.id,
-        limit: 10000,
-        offset: 0,
-      });
-      setPayments(result);
+      let unifiedPayments: UnifiedPayment[] = [];
+      
+      if (account.provider === "naver") {
+        const result = await invoke<NaverPaymentListItem[]>("list_naver_payments", {
+          userId: account.id,
+          limit: 10000,
+          offset: 0,
+        });
+        unifiedPayments = parseNaverPayments(result);
+      } else if (account.provider === "coupang") {
+        const result = await invoke<CoupangPaymentListItem[]>("list_coupang_payments", {
+          userId: account.id,
+          limit: 10000,
+          offset: 0,
+        });
+        unifiedPayments = parseCoupangPayments(result);
+      } else {
+        setError("지원하지 않는 플랫폼입니다.");
+        setLoading(false);
+        return;
+      }
+      
+      setPayments(unifiedPayments);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -71,9 +85,9 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
 
   // 월별로 그룹화
   const groupedByMonth = useMemo(() => {
-    const groups: Record<string, NaverPaymentListItem[]> = {};
+    const groups: Record<string, UnifiedPayment[]> = {};
     payments.forEach((payment) => {
-      const yearMonth = formatYearMonth(payment.paidAt);
+      const yearMonth = formatYearMonth(payment.paid_at);
       if (!groups[yearMonth]) {
         groups[yearMonth] = [];
       }
@@ -84,13 +98,13 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
 
   // 총 지출금액 계산
   const totalAmount = useMemo(() => {
-    return payments.reduce((sum, p) => sum + p.totalAmount, 0);
+    return payments.reduce((sum, p) => sum + p.total_amount, 0);
   }, [payments]);
 
   // 기간 계산
   const dateRange = useMemo(() => {
     if (payments.length === 0) return null;
-    const dates = payments.map((p) => new Date(p.paidAt)).sort((a, b) => a.getTime() - b.getTime());
+    const dates = payments.map((p) => new Date(p.paid_at)).sort((a, b) => a.getTime() - b.getTime());
     const start = dates[0];
     const end = dates[dates.length - 1];
     return {
@@ -110,7 +124,7 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
   const monthlyTotals = useMemo(() => {
     const totals: Record<string, number> = {};
     Object.entries(groupedByMonth).forEach(([yearMonth, items]) => {
-      totals[yearMonth] = items.reduce((sum, p) => sum + p.totalAmount, 0);
+      totals[yearMonth] = items.reduce((sum, p) => sum + p.total_amount, 0);
     });
     return totals;
   }, [groupedByMonth]);
@@ -175,7 +189,7 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
             <div>
               <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">거래 목록</h1>
               <p className="text-gray-600 text-lg">
-                {account.alias} · <span className="font-mono font-bold text-gray-800">
+                {account.alias} ({account.provider}) · <span className="font-mono font-bold text-gray-800">
                   {dateRange ? `${dateRange.start} ~ ${dateRange.end}` : "데이터 없음"}
                 </span>
               </p>
@@ -237,7 +251,7 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
                     <tbody className="bg-[linear-gradient(transparent_95%,#ede9dd_95%)] bg-[length:100%_2.5rem]">
                       {displayPayments.map((payment, idx) => {
                         const isExpanded = expandedPayments.has(payment.id);
-                        const displayName = payment.productName || payment.merchantName;
+                        const displayName = payment.product_name || payment.merchant_name;
 
                         return (
                           <React.Fragment key={payment.id}>
@@ -248,7 +262,7 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
                               onClick={() => togglePayment(payment.id)}
                             >
                               <td className="px-4 border-r border-gray-200 text-gray-600 align-middle">
-                                {formatDate(payment.paidAt)}
+                                {formatDate(payment.paid_at)}
                               </td>
                               <td className="px-4 border-r border-gray-200 text-gray-900 font-semibold align-middle">
                                 <div className="flex items-center gap-2">
@@ -266,7 +280,7 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
                                 </div>
                               </td>
                               <td className="px-4 text-right text-gray-900 font-bold align-middle">
-                                {formatAmount(payment.totalAmount)}
+                                {formatAmount(payment.total_amount)}
                               </td>
                             </tr>
                             {isExpanded && (
@@ -279,33 +293,36 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
                                           key={itemIdx}
                                           className="flex items-start gap-4 p-4 bg-[#fffef0] border border-[#d4c4a8]"
                                         >
-                                          {item.imageUrl && (
+                                          {item.image_url && (
                                             <img
-                                              src={item.imageUrl}
-                                              alt={item.productName}
+                                              src={item.image_url}
+                                              alt={item.product_name}
                                               className="w-16 h-16 object-cover border border-gray-300"
                                             />
                                           )}
                                           <div className="flex-1">
                                             <div className="font-medium text-gray-900">
-                                              {item.productName}
+                                              {item.product_name}
                                             </div>
                                             <div className="mt-1 text-xs text-gray-500">
                                               수량: {item.quantity}
-                                              {item.unitPrice && (
-                                                <> · 단가: {formatAmount(item.unitPrice)}</>
+                                              {item.unit_price && (
+                                                <> · 단가: {formatAmount(item.unit_price)}</>
+                                              )}
+                                              {item.brand_name && (
+                                                <> · {item.brand_name}</>
                                               )}
                                             </div>
                                           </div>
                                           <div className="text-right">
-                                            {item.lineAmount && (
+                                            {item.line_amount && (
                                               <div className="font-bold text-gray-900">
-                                                {formatAmount(item.lineAmount)}
+                                                {formatAmount(item.line_amount)}
                                               </div>
                                             )}
-                                            {item.restAmount && item.restAmount > 0 && (
+                                            {item.rest_amount && item.rest_amount > 0 && (
                                               <div className="text-xs text-gray-500">
-                                                남은 금액: {formatAmount(item.restAmount)}
+                                                남은 금액: {formatAmount(item.rest_amount)}
                                               </div>
                                             )}
                                           </div>

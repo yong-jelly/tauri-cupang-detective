@@ -1157,6 +1157,164 @@ fn list_naver_payments(
     Ok(payments)
 }
 
+// 쿠팡 결제 목록 조회용 구조체
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CoupangPaymentListItem {
+    id: i64,
+    order_id: String,
+    external_id: Option<String>,
+    status_code: Option<String>,
+    status_text: Option<String>,
+    status_color: Option<String>,
+    ordered_at: String,
+    paid_at: Option<String>,
+    merchant_name: String,
+    merchant_tel: Option<String>,
+    merchant_url: Option<String>,
+    merchant_image_url: Option<String>,
+    product_name: Option<String>,
+    product_count: Option<i32>,
+    total_amount: i64,
+    total_order_amount: Option<i64>,
+    total_cancel_amount: Option<i64>,
+    discount_amount: Option<i64>,
+    rest_amount: Option<i64>,
+    main_pay_type: Option<String>,
+    items: Vec<CoupangPaymentItem>,
+}
+
+#[tauri::command]
+fn list_coupang_payments(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Result<Vec<CoupangPaymentListItem>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    let limit = limit.unwrap_or(100);
+    let offset = offset.unwrap_or(0);
+    
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, order_id, external_id, status_code, status_text, status_color,
+                    ordered_at, paid_at, merchant_name, merchant_tel, merchant_url, merchant_image_url,
+                    product_name, product_count, total_amount, total_order_amount, total_cancel_amount,
+                    discount_amount, rest_amount, main_pay_type
+             FROM tbl_coupang_payment
+             WHERE user_id = ?1
+             ORDER BY ordered_at DESC
+             LIMIT ?2 OFFSET ?3"
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let rows = stmt
+        .query_map(rusqlite::params![user_id, limit, offset], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, Option<String>>(5)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, Option<String>>(7)?,
+                row.get::<_, String>(8)?,
+                row.get::<_, Option<String>>(9)?,
+                row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<String>>(11)?,
+                row.get::<_, Option<String>>(12)?,
+                row.get::<_, Option<i32>>(13)?,
+                row.get::<_, i64>(14)?,
+                row.get::<_, Option<i64>>(15)?,
+                row.get::<_, Option<i64>>(16)?,
+                row.get::<_, Option<i64>>(17)?,
+                row.get::<_, Option<i64>>(18)?,
+                row.get::<_, Option<String>>(19)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut payments = Vec::new();
+    for row_result in rows {
+        let (id, order_id, external_id, status_code, status_text, status_color,
+             ordered_at, paid_at, merchant_name, merchant_tel, merchant_url, merchant_image_url,
+             product_name, product_count, total_amount, total_order_amount, total_cancel_amount,
+             discount_amount, rest_amount, main_pay_type) = row_result.map_err(|e| e.to_string())?;
+        
+        // 상세 항목 조회
+        let mut item_stmt = conn
+            .prepare(
+                "SELECT line_no, product_id, vendor_item_id, product_name, image_url, info_url,
+                        brand_name, quantity, unit_price, discounted_unit_price, combined_unit_price,
+                        line_amount, rest_amount, memo
+                 FROM tbl_coupang_payment_item
+                 WHERE payment_id = ?1
+                 ORDER BY line_no"
+            )
+            .map_err(|e| e.to_string())?;
+        
+        let item_rows = item_stmt
+            .query_map([id], |row| {
+                Ok(CoupangPaymentItem {
+                    line_no: row.get(0)?,
+                    product_id: row.get(1)?,
+                    vendor_item_id: row.get(2)?,
+                    product_name: row.get(3)?,
+                    image_url: row.get(4)?,
+                    info_url: row.get(5)?,
+                    brand_name: row.get(6)?,
+                    quantity: row.get(7)?,
+                    unit_price: row.get(8)?,
+                    discounted_unit_price: row.get(9)?,
+                    combined_unit_price: row.get(10)?,
+                    line_amount: row.get(11)?,
+                    rest_amount: row.get(12)?,
+                    memo: row.get(13)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        
+        let mut items = Vec::new();
+        for item_result in item_rows {
+            items.push(item_result.map_err(|e| e.to_string())?);
+        }
+        
+        payments.push(CoupangPaymentListItem {
+            id,
+            order_id,
+            external_id,
+            status_code,
+            status_text,
+            status_color,
+            ordered_at,
+            paid_at,
+            merchant_name,
+            merchant_tel,
+            merchant_url,
+            merchant_image_url,
+            product_name,
+            product_count,
+            total_amount,
+            total_order_amount,
+            total_cancel_amount,
+            discount_amount,
+            rest_amount,
+            main_pay_type,
+            items,
+        });
+    }
+    
+    Ok(payments)
+}
+
 #[tauri::command]
 fn save_coupang_payment(
     app_handle: AppHandle,
@@ -1436,6 +1594,7 @@ pub fn run() {
             update_account_credentials,
             save_naver_payment,
             list_naver_payments,
+            list_coupang_payments,
             save_coupang_payment,
             get_last_coupang_payment,
             get_table_stats,

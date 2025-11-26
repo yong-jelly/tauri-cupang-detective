@@ -5,12 +5,9 @@ import {
   TrendingUp, 
   TrendingDown,
   Calendar,
-  Receipt,
-  PieChart as PieChartIcon,
   ArrowUpRight,
   ArrowDownRight,
   Minus,
-  BarChart3,
   Crown,
   HelpCircle,
 } from "lucide-react";
@@ -29,11 +26,10 @@ import {
   Area,
   Line,
   ReferenceLine,
-  ScatterChart,
-  Scatter,
-  ZAxis,
 } from "recharts";
-import type { User, NaverPaymentListItem } from "@shared/api/types";
+import type { User, NaverPaymentListItem, CoupangPaymentListItem } from "@shared/api/types";
+import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
+import { parseNaverPayments, parseCoupangPayments } from "@shared/lib/paymentParsers";
 import { processOverviewData, formatAmount, formatChangeRate, getQuarterlyTopExpenses } from "../lib/utils";
 
 interface ExpenditureOverviewPageProps {
@@ -47,7 +43,7 @@ const RETRO_COLORS = ["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51", "#8
 type PeriodFilter = "all" | "year" | "quarter" | "month";
 
 export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProps) => {
-  const [payments, setPayments] = useState<NaverPaymentListItem[]>([]);
+  const [payments, setPayments] = useState<UnifiedPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
@@ -56,22 +52,33 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
 
   useEffect(() => {
     const loadPayments = async () => {
-      if (account.provider !== "naver") {
-        setError("네이버 계정만 지원됩니다.");
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
       setError(null);
 
       try {
-        const result = await invoke<NaverPaymentListItem[]>("list_naver_payments", {
-          userId: account.id,
-          limit: 10000,
-          offset: 0,
-        });
-        setPayments(result);
+        let unifiedPayments: UnifiedPayment[] = [];
+        
+        if (account.provider === "naver") {
+          const result = await invoke<NaverPaymentListItem[]>("list_naver_payments", {
+            userId: account.id,
+            limit: 10000,
+            offset: 0,
+          });
+          unifiedPayments = parseNaverPayments(result);
+        } else if (account.provider === "coupang") {
+          const result = await invoke<CoupangPaymentListItem[]>("list_coupang_payments", {
+            userId: account.id,
+            limit: 10000,
+            offset: 0,
+          });
+          unifiedPayments = parseCoupangPayments(result);
+        } else {
+          setError("지원하지 않는 플랫폼입니다.");
+          setLoading(false);
+          return;
+        }
+        
+        setPayments(unifiedPayments);
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -87,7 +94,7 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
     if (periodFilter === "all") return payments;
 
     return payments.filter((payment) => {
-      const date = new Date(payment.paidAt);
+      const date = new Date(payment.paid_at);
       const year = date.getFullYear();
       const quarter = Math.floor(date.getMonth() / 3) + 1;
       const month = date.getMonth();
@@ -113,7 +120,7 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
 
   // 사용 가능한 연도 목록
   const availableYears = useMemo(() => {
-    const years = new Set(payments.map(p => new Date(p.paidAt).getFullYear()));
+    const years = new Set(payments.map(p => new Date(p.paid_at).getFullYear()));
     return Array.from(years).sort((a, b) => b - a);
   }, [payments]);
 
@@ -121,7 +128,7 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
   const periodText = useMemo(() => {
     if (payments.length === 0) return "데이터 없음";
     
-    const dates = payments.map(p => new Date(p.paidAt));
+    const dates = payments.map(p => new Date(p.paid_at));
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
     
@@ -149,8 +156,8 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
     ];
 
     return ranges.map(range => {
-      const items = filteredPayments.filter(p => p.totalAmount >= range.min && p.totalAmount < range.max);
-      const totalAmount = items.reduce((sum, p) => sum + p.totalAmount, 0);
+      const items = filteredPayments.filter(p => p.total_amount >= range.min && p.total_amount < range.max);
+      const totalAmount = items.reduce((sum, p) => sum + p.total_amount, 0);
       return {
         label: range.label,
         count: items.length,
@@ -215,7 +222,7 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
             <div>
               <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">종합 대시보드</h1>
               <p className="text-gray-600 text-lg">
-                {account.alias} · <span className="font-mono font-bold text-gray-800">{periodText}</span>
+                {account.alias} ({account.provider}) · <span className="font-mono font-bold text-gray-800">{periodText}</span>
               </p>
             </div>
             

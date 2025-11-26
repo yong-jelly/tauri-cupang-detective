@@ -185,8 +185,8 @@ export const Sidebar = ({
 
       {/* 스크롤 가능 콘텐츠 */}
       <div className="flex-1 overflow-y-auto">
-        {/* 지출 분석 섹션 (네이버 계정 선택시만) */}
-        {selectedAccount && selectedAccount.provider === "naver" && (
+        {/* 지출 분석 섹션 (네이버/쿠팡 계정 선택시) */}
+        {selectedAccount && (selectedAccount.provider === "naver" || selectedAccount.provider === "coupang") && (
           <div className="mt-2">
             <div className={sectionHeaderClass} onClick={() => toggleSection("expenditure")}>
               <span className="flex items-center gap-2">
