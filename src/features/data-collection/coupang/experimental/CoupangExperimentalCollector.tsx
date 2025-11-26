@@ -125,25 +125,25 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
   }, [account.provider, getHeaders, resolveBuildId]);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#fdfbf7] font-mono">
       {/* Header */}
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+      <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
         <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">데이터 수집 (쿠팡)</h1>
-          <p className="text-sm text-gray-500">{account.alias}</p>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 font-serif uppercase tracking-wide">데이터 수집 (쿠팡)</h1>
+            <p className="text-sm text-gray-600 tracking-wider">{account.alias}</p>
           </div>
           {detailBuildId && (
-            <div className="px-3 py-1 bg-green-50 border border-green-200 rounded">
-              <div className="text-xs text-gray-500">Build ID</div>
-              <div className="text-sm font-mono font-semibold text-green-700">{detailBuildId}</div>
+            <div className="px-3 py-1.5 bg-[#2a9d8f] border-2 border-gray-800 shadow-[2px_2px_0px_0px_rgba(31,41,55,0.4)]">
+              <div className="text-xs text-white/70 uppercase tracking-wider">Build ID</div>
+              <div className="text-sm font-mono font-bold text-white">{detailBuildId}</div>
             </div>
           )}
         </div>
         <button
           onClick={fetchList}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider bg-gray-800 text-[#fffef0] border-2 border-gray-800 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
         >
           {loading ? (
             <>
@@ -164,13 +164,13 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
         {/* Left Column */}
         <div className="flex flex-col gap-4 overflow-hidden">
           {/* List JSON */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">주문 목록 JSON</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">주문 목록 JSON</h2>
               {listData && (
                 <button
                   onClick={() => copyToClipboard(JSON.stringify(listData, null, 2))}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 bg-white border-2 border-gray-800 hover:bg-gray-100 transition-colors"
                   title="클릭하여 JSON 전체 복사"
                 >
                   {copiedUrl === JSON.stringify(listData, null, 2) ? (
@@ -189,21 +189,21 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
             </div>
             <div className="flex-1 overflow-auto p-4">
               {listError ? (
-                <div className="text-sm text-red-600">{listError}</div>
+                <div className="text-sm text-[#e76f51] font-bold">{listError}</div>
               ) : listData ? (
-                <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap break-words">
                   {JSON.stringify(listData, null, 2)}
                 </pre>
               ) : (
-                <div className="text-sm text-gray-400">테스트 버튼을 눌러 데이터를 조회하세요.</div>
+                <div className="text-sm text-gray-500 italic">테스트 버튼을 눌러 데이터를 조회하세요.</div>
               )}
             </div>
           </div>
 
           {/* Detail JSON */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">주문 상세 JSON</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">주문 상세 JSON</h2>
               {selectedOrderId && detailBuildId && (
                 <button
                   onClick={() =>
@@ -211,7 +211,7 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                       buildDetailUrl(account.provider, selectedOrderId, undefined, undefined, { buildId: detailBuildId }),
                     )
                   }
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 bg-white border-2 border-gray-800 hover:bg-gray-100 transition-colors"
                   title="클릭하여 URL 복사"
                 >
                   {copiedUrl ===
@@ -230,31 +230,31 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
               )}
             </div>
             <div className="flex-1 overflow-auto p-4">
-                {detailLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
-                    </div>
-                ) : detailError ? (
-                    <div className="text-sm text-red-600">{detailError}</div>
+              {detailLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-800" />
+                </div>
+              ) : detailError ? (
+                <div className="text-sm text-[#e76f51] font-bold">{detailError}</div>
               ) : detailData ? (
                 <>
                   {selectedOrderId && detailBuildId && (
-                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                    <div className="mb-3 p-2 bg-[#e9c46a]/20 border-2 border-[#e9c46a] text-xs">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-gray-600 font-medium">API URL:</span>
-                        <code className="text-blue-700 flex-1 break-all text-right">
+                        <span className="text-gray-700 font-bold uppercase tracking-wider">API URL:</span>
+                        <code className="text-gray-800 flex-1 break-all text-right">
                           {buildDetailUrl(account.provider, selectedOrderId, undefined, undefined, { buildId: detailBuildId })}
-                            </code>
-                        </div>
+                        </code>
+                      </div>
                     </div>
                   )}
-                  <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                  <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap break-words">
                     {JSON.stringify(detailData, null, 2)}
                   </pre>
                 </>
-                ) : (
-                <div className="text-sm text-gray-400">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
-                )}
+              ) : (
+                <div className="text-sm text-gray-500 italic">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
+              )}
             </div>
           </div>
         </div>
@@ -262,88 +262,88 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
         {/* Right Column */}
         <div className="flex flex-col gap-4 overflow-hidden">
           {/* List Table */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-900">주문 목록</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9]">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">주문 목록</h2>
             </div>
             <div className="flex-1 overflow-auto">
               {!listData ? (
-                <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                <div className="flex items-center justify-center h-full text-sm text-gray-500 italic">
                   데이터가 없습니다.
                 </div>
               ) : listData.orderList && listData.orderList.length > 0 ? (
-                <div className="divide-y divide-gray-200">
-                    {listData.orderList.map((order) => (
-                        <div key={order.orderId} className="p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex justify-between items-start mb-2">
-                                <div>
-                                    <div className="text-xs text-gray-500 mb-1">
-                                        {new Date(order.orderedAt).toLocaleDateString()} · 주문번호 {order.orderId}
-                                    </div>
-                                    <h3 className="text-sm font-medium text-gray-900">{order.title}</h3>
-                                </div>
-                                <button
-                                    onClick={() => fetchDetail(String(order.orderId))}
-                                    className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 font-medium"
-                                >
-                                    상세보기
-                                </button>
-                            </div>
-                            
-                            <div className="space-y-2 mt-3">
-                                {order.deliveryGroupList.map((group, groupIdx) => (
-                                    <div key={`${group.shipmentBoxId}-${groupIdx}`} className="space-y-2">
-                                        {group.productList.map((product, productIdx) => (
-                                            <div key={`${product.vendorItemId}-${productIdx}`} className="flex gap-3 bg-gray-50 p-2 rounded">
-                                                {product.imagePath && (
-                                                  <img 
-                                                      src={product.imagePath} 
-                                                      alt={product.productName}
-                                                      className="w-12 h-12 rounded object-cover bg-white border border-gray-200"
-                                                  />
-                                                )}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-xs text-gray-900 line-clamp-2" title={product.productName}>
-                                                        {product.productName}
-                                                    </div>
-                                                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                                                        <span>{product.quantity}개</span>
-                                                        <span>₩{product.unitPrice.toLocaleString()}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-sm">
-                                <span className="text-gray-600">총 결제금액</span>
-                                <span className="font-bold text-gray-900">₩{order.totalProductPrice.toLocaleString()}</span>
-                            </div>
+                <div className="divide-y-2 divide-gray-300">
+                  {listData.orderList.map((order) => (
+                    <div key={order.orderId} className="p-4 hover:bg-[#f6f1e9] transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <div className="text-xs text-gray-600 mb-1 font-mono">
+                            {new Date(order.orderedAt).toLocaleDateString()} · 주문번호 {order.orderId}
+                          </div>
+                          <h3 className="text-sm font-bold text-gray-900">{order.title}</h3>
                         </div>
-                    ))}
+                        <button
+                          onClick={() => fetchDetail(String(order.orderId))}
+                          className="text-xs px-3 py-1.5 font-bold uppercase tracking-wider bg-gray-800 text-[#fffef0] border-2 border-gray-800 hover:bg-gray-700 transition-colors"
+                        >
+                          상세보기
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-2 mt-3">
+                        {order.deliveryGroupList.map((group, groupIdx) => (
+                          <div key={`${group.shipmentBoxId}-${groupIdx}`} className="space-y-2">
+                            {group.productList.map((product, productIdx) => (
+                              <div key={`${product.vendorItemId}-${productIdx}`} className="flex gap-3 bg-white border border-gray-300 p-2">
+                                {product.imagePath && (
+                                  <img 
+                                    src={product.imagePath} 
+                                    alt={product.productName}
+                                    className="w-12 h-12 object-cover bg-white border-2 border-gray-800"
+                                  />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs text-gray-900 line-clamp-2 font-medium" title={product.productName}>
+                                    {product.productName}
+                                  </div>
+                                  <div className="text-xs text-gray-600 mt-1 flex items-center gap-2 font-mono">
+                                    <span>{product.quantity}개</span>
+                                    <span>₩{product.unitPrice.toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t-2 border-dashed border-gray-400 flex justify-between items-center text-sm">
+                        <span className="text-gray-600 uppercase tracking-wider text-xs">총 결제금액</span>
+                        <span className="font-bold text-gray-900 font-mono">₩{order.totalProductPrice.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-sm text-gray-400">
-                    주문 내역이 없습니다.
+                <div className="flex items-center justify-center h-full text-sm text-gray-500 italic">
+                  주문 내역이 없습니다.
                 </div>
               )}
             </div>
           </div>
 
           {/* Detail Table */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-900">주문 상세</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9]">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">주문 상세</h2>
             </div>
             <div className="flex-1 overflow-auto p-4">
               {detailLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-800" />
                 </div>
               ) : detailError ? (
-                <div className="text-sm text-red-600">{detailError}</div>
+                <div className="text-sm text-[#e76f51] font-bold">{detailError}</div>
               ) : detailData?.pageProps?.domains?.order?.entity?.entities ? (
                 (() => {
                   // entities에서 주문 ID 찾기 (selectedOrderId 우선, 없으면 activeOrderId 또는 첫 번째 ID 사용)
@@ -370,22 +370,22 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                   }
                   
                   if (!orderId) {
-                    return <div className="text-sm text-gray-400">주문 정보를 찾을 수 없습니다.</div>;
+                    return <div className="text-sm text-gray-500 italic">주문 정보를 찾을 수 없습니다.</div>;
                   }
                   
                   const orderEntity = entities[orderId];
                   const paymentEntity = detailData.pageProps.domains.payment?.entities?.[orderId];
                   
                   if (!orderEntity) {
-                    return <div className="text-sm text-gray-400">주문 정보를 찾을 수 없습니다.</div>;
+                    return <div className="text-sm text-gray-500 italic">주문 정보를 찾을 수 없습니다.</div>;
                   }
 
                   return (
                     <div className="space-y-4 text-sm">
                       {/* 주문 정보 */}
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">주문 정보</div>
-                        <div className="bg-gray-50 rounded p-3 space-y-2">
+                        <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">주문 정보</div>
+                        <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                           {orderEntity.orderId && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">주문번호:</span>
@@ -430,18 +430,18 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                       {/* 상품 목록 */}
                       {orderEntity.deliveryGroupList && orderEntity.deliveryGroupList.length > 0 && (
                         <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase mb-1">상품 목록</div>
+                          <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">상품 목록</div>
                           {orderEntity.deliveryGroupList.map((group: any, groupIdx: number) => (
                             <div key={groupIdx} className="mb-4">
                               {group.productList && group.productList.length > 0 && (
                                 <>
                                   {group.deliveryCompany && (
-                                    <div className="text-xs text-gray-500 mb-2">
+                                    <div className="text-xs text-gray-600 mb-2 font-mono">
                                       배송사: {group.deliveryCompany.companyName || group.deliveryCompany.familyName}
                                     </div>
                                   )}
                                   {group.productList.map((product: any, productIdx: number) => (
-                                    <div key={productIdx} className="bg-gray-50 rounded p-3 space-y-2 mb-2">
+                                    <div key={productIdx} className="bg-white border-2 border-gray-800 p-3 space-y-2 mb-2">
                                       <div className="flex items-start gap-3">
                                         {product.imagePath && (
                                           <img
@@ -512,8 +512,8 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                       {/* 결제 정보 */}
                       {paymentEntity && (
                         <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase mb-1">결제 정보</div>
-                          <div className="bg-gray-50 rounded p-3 space-y-2">
+                          <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">결제 정보</div>
+                          <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                             {paymentEntity.totalPayedAmount !== undefined && (
                               <div className="flex justify-between">
                                 <span className="text-gray-600">총 결제금액:</span>
@@ -583,8 +583,8 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                       {/* 배송지 정보 */}
                       {orderEntity.deliveryDestination && (
                         <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase mb-1">배송지 정보</div>
-                          <div className="bg-gray-50 rounded p-3 space-y-2">
+                          <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">배송지 정보</div>
+                          <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                             {orderEntity.deliveryDestination.zipCode && (
                               <div className="flex justify-between">
                                 <span className="text-gray-600">우편번호:</span>
@@ -631,7 +631,7 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
                   );
                 })()
               ) : (
-                <div className="text-sm text-gray-400">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
+                <div className="text-sm text-gray-500 italic">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
               )}
             </div>
           </div>

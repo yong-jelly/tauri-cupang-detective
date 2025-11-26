@@ -352,110 +352,110 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#fdfbf7] font-mono">
       {/* Header */}
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+      <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">네이버 데이터 수집</h1>
-          <p className="text-sm text-gray-500">{account.alias} ({account.provider})</p>
+          <h1 className="text-xl font-bold text-gray-900 font-serif uppercase tracking-wide">네이버 데이터 수집</h1>
+          <p className="text-sm text-gray-600 tracking-wider">{account.alias} ({account.provider})</p>
         </div>
-        <div className="flex gap-2">
-             {!isCollecting ? (
-                <button
-                  onClick={startCollection}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Play className="w-4 h-4" />
-                  수집 시작
-                </button>
-             ) : (
-                <button
-                  onClick={stopCollection}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                >
-                  <Pause className="w-4 h-4" />
-                  중단
-                </button>
-             )}
+        <div className="flex gap-3">
+          {!isCollecting ? (
+            <button
+              onClick={startCollection}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#2a9d8f] text-white border-2 border-gray-800 hover:bg-[#264653] transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
+            >
+              <Play className="w-4 h-4" />
+              수집 시작
+            </button>
+          ) : (
+            <button
+              onClick={stopCollection}
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#e76f51] text-white border-2 border-gray-800 hover:bg-[#e63946] transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
+            >
+              <Pause className="w-4 h-4" />
+              중단
+            </button>
+          )}
         </div>
       </div>
 
       {/* Dashboard */}
       <div className="p-6 grid grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-sm text-gray-500">총 처리</div>
-              <div className="text-2xl font-bold">{progress.current} / {progress.total > 0 ? progress.total : '-'}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-sm text-gray-500">성공</div>
-              <div className="text-2xl font-bold text-green-600">{progress.success}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-sm text-gray-500">실패</div>
-              <div className="text-2xl font-bold text-red-600">{progress.failed}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-              <div className="text-sm text-gray-500">현재 페이지</div>
-              <div className="text-2xl font-bold text-blue-600">{currentPage || '-'}</div>
-          </div>
+        <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">총 처리</div>
+          <div className="text-2xl font-bold text-gray-900 font-mono mt-1">{progress.current} / {progress.total > 0 ? progress.total : '-'}</div>
+        </div>
+        <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">성공</div>
+          <div className="text-2xl font-bold text-[#2a9d8f] font-mono mt-1">{progress.success}</div>
+        </div>
+        <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">실패</div>
+          <div className="text-2xl font-bold text-[#e76f51] font-mono mt-1">{progress.failed}</div>
+        </div>
+        <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">현재 페이지</div>
+          <div className="text-2xl font-bold text-[#264653] font-mono mt-1">{currentPage || '-'}</div>
+        </div>
       </div>
 
       {/* Logs */}
       <div className="flex-1 px-6 pb-6 overflow-hidden flex flex-col">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-sm flex-1 overflow-hidden flex flex-col">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 font-semibold text-sm text-gray-700">
-                  수집 로그
-              </div>
-              <div className="flex-1 overflow-auto p-0">
-                  <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-500 sticky top-0">
-                          <tr>
-                              <th className="px-4 py-2 w-24">시간</th>
-                              <th className="px-4 py-2 w-20">페이지</th>
-                              <th className="px-4 py-2">메시지</th>
-                              <th className="px-4 py-2 w-24">상태</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                          {logs.map((log, idx) => (
-                              <tr key={idx} className="hover:bg-gray-50">
-                                  <td className="px-4 py-2 text-gray-500 font-mono text-xs whitespace-nowrap">{log.timestamp}</td>
-                                  <td className="px-4 py-2 text-gray-600 text-center">{log.page > 0 ? log.page : '-'}</td>
-                                  <td className="px-4 py-2 text-gray-800">
-                                      <div className="flex items-center gap-2">
-                                          {log.imageUrl && (
-                                              <img src={log.imageUrl} alt="상품" className="w-8 h-8 rounded object-cover flex-shrink-0 border border-gray-200" />
-                                          )}
-                                          <div className="flex flex-col">
-                                              <div className="flex items-center gap-2">
-                                                  {log.date && <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{new Date(log.date).toLocaleDateString()}</span>}
-                                                  {log.amount !== undefined && <span className="text-xs font-medium text-blue-600">₩{log.amount.toLocaleString()}</span>}
-                                              </div>
-                                              <div className="flex items-center gap-2">
-                                                  {log.payId && <span className="text-xs text-gray-400 hidden md:inline-block">#{log.payId.slice(0, 8)}...</span>}
-                                                  <span className="text-sm">{log.message}</span>
-                                              </div>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td className="px-4 py-2 text-center">
-                                      {log.status === 'success' && <CheckCircle className="w-4 h-4 text-green-500 mx-auto" />}
-                                      {log.status === 'error' && <AlertCircle className="w-4 h-4 text-red-500 mx-auto" />}
-                                      {log.status === 'info' && <Clock className="w-4 h-4 text-blue-500 mx-auto" />}
-                                  </td>
-                              </tr>
-                          ))}
-                          {logs.length === 0 && (
-                              <tr>
-                                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-                                      수집을 시작하면 로그가 표시됩니다.
-                                  </td>
-                              </tr>
-                          )}
-                      </tbody>
-                  </table>
-              </div>
+        <div className="bg-[#fffef0] border-2 border-gray-800 shadow-[6px_6px_0px_0px_rgba(31,41,55,1)] flex-1 overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9] font-bold text-xs text-gray-800 uppercase tracking-wider">
+            수집 로그
           </div>
+          <div className="flex-1 overflow-auto p-0">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-[#f6f1e9] text-gray-700 sticky top-0 border-b-2 border-gray-800">
+                <tr>
+                  <th className="px-4 py-2 w-24 text-xs uppercase tracking-wider font-bold">시간</th>
+                  <th className="px-4 py-2 w-20 text-xs uppercase tracking-wider font-bold">페이지</th>
+                  <th className="px-4 py-2 text-xs uppercase tracking-wider font-bold">메시지</th>
+                  <th className="px-4 py-2 w-24 text-xs uppercase tracking-wider font-bold">상태</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-300">
+                {logs.map((log, idx) => (
+                  <tr key={idx} className={`${idx % 2 === 0 ? 'bg-white/80' : 'bg-white/60'} hover:bg-yellow-50/70 transition-colors`}>
+                    <td className="px-4 py-2 text-gray-600 font-mono text-xs whitespace-nowrap">{log.timestamp}</td>
+                    <td className="px-4 py-2 text-gray-700 text-center font-bold">{log.page > 0 ? log.page : '-'}</td>
+                    <td className="px-4 py-2 text-gray-800">
+                      <div className="flex items-center gap-2">
+                        {log.imageUrl && (
+                          <img src={log.imageUrl} alt="상품" className="w-8 h-8 object-cover flex-shrink-0 border-2 border-gray-800" />
+                        )}
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            {log.date && <span className="text-xs text-gray-600 bg-[#e9c46a]/30 px-1.5 py-0.5 border border-[#e9c46a]">{new Date(log.date).toLocaleDateString()}</span>}
+                            {log.amount !== undefined && <span className="text-xs font-bold text-[#264653]">₩{log.amount.toLocaleString()}</span>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {log.payId && <span className="text-xs text-gray-500 hidden md:inline-block font-mono">#{log.payId.slice(0, 8)}...</span>}
+                            <span className="text-sm font-medium">{log.message}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {log.status === 'success' && <CheckCircle className="w-4 h-4 text-[#2a9d8f] mx-auto" />}
+                      {log.status === 'error' && <AlertCircle className="w-4 h-4 text-[#e76f51] mx-auto" />}
+                      {log.status === 'info' && <Clock className="w-4 h-4 text-[#264653] mx-auto" />}
+                    </td>
+                  </tr>
+                ))}
+                {logs.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
+                      수집을 시작하면 로그가 표시됩니다.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

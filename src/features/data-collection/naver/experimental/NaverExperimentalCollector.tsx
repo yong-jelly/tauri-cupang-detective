@@ -236,17 +236,17 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
   const items = listData?.pageProps?.dehydratedState?.queries?.[0]?.state?.data?.pages?.[0]?.items || [];
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#fdfbf7] font-mono">
       {/* Header */}
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+      <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">데이터 수집 (네이버)</h1>
-          <p className="text-sm text-gray-500">{account.alias} ({account.provider})</p>
+          <h1 className="text-xl font-bold text-gray-900 font-serif uppercase tracking-wide">데이터 수집 (네이버)</h1>
+          <p className="text-sm text-gray-600 tracking-wider">{account.alias} ({account.provider})</p>
         </div>
         <button
           onClick={fetchList}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider bg-gray-800 text-[#fffef0] border-2 border-gray-800 hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
         >
           {loading ? (
             <>
@@ -267,13 +267,13 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
         {/* Left Column */}
         <div className="flex flex-col gap-4 overflow-hidden">
           {/* List JSON */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">거래 목록 JSON</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">거래 목록 JSON</h2>
               {listData && (
                 <button
                   onClick={() => copyToClipboard(JSON.stringify(listData, null, 2))}
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 bg-white border-2 border-gray-800 hover:bg-gray-100 transition-colors"
                   title="클릭하여 JSON 전체 복사"
                 >
                   {copiedUrl === JSON.stringify(listData, null, 2) ? (
@@ -292,21 +292,21 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
             </div>
             <div className="flex-1 overflow-auto p-4">
               {listError ? (
-                <div className="text-sm text-red-600">{listError}</div>
+                <div className="text-sm text-[#e76f51] font-bold">{listError}</div>
               ) : listData ? (
-                <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap break-words">
                   {JSON.stringify(listData, null, 2)}
                 </pre>
               ) : (
-                <div className="text-sm text-gray-400">테스트 버튼을 눌러 데이터를 조회하세요.</div>
+                <div className="text-sm text-gray-500 italic">테스트 버튼을 눌러 데이터를 조회하세요.</div>
               )}
             </div>
           </div>
 
           {/* Detail JSON */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-900">거래 상세 JSON</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">거래 상세 JSON</h2>
               {selectedPaymentId && (
                 <button
                   onClick={() =>
@@ -314,7 +314,7 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       buildDetailUrl(account.provider, selectedPaymentId, selectedServiceType || undefined, selectedOrderNo || undefined),
                     )
                   }
-                  className="inline-flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold uppercase tracking-wider text-gray-700 bg-white border-2 border-gray-800 hover:bg-gray-100 transition-colors"
                   title="클릭하여 URL 복사"
                 >
                   {copiedUrl ===
@@ -335,17 +335,17 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
             <div className="flex-1 overflow-auto p-4">
               {detailLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-800" />
                 </div>
               ) : detailError ? (
-                <div className="text-sm text-red-600">{detailError}</div>
+                <div className="text-sm text-[#e76f51] font-bold">{detailError}</div>
               ) : detailData ? (
                 <>
                   {selectedPaymentId && (
-                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                    <div className="mb-3 p-2 bg-[#e9c46a]/20 border-2 border-[#e9c46a] text-xs">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-gray-600 font-medium">API URL:</span>
-                        <code className="text-blue-700 flex-1 break-all text-right">
+                        <span className="text-gray-700 font-bold uppercase tracking-wider">API URL:</span>
+                        <code className="text-gray-800 flex-1 break-all text-right">
                           {buildDetailUrl(
                             account.provider,
                             selectedPaymentId,
@@ -356,12 +356,12 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       </div>
                     </div>
                   )}
-                  <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                  <pre className="text-xs font-mono text-gray-800 whitespace-pre-wrap break-words">
                     {JSON.stringify(detailData, null, 2)}
                   </pre>
                 </>
               ) : (
-                <div className="text-sm text-gray-400">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
+                <div className="text-sm text-gray-500 italic">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
               )}
             </div>
           </div>
@@ -370,50 +370,50 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
         {/* Right Column */}
         <div className="flex flex-col gap-4 overflow-hidden">
           {/* List Table */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-900">거래 목록</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9]">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">거래 목록</h2>
             </div>
             <div className="flex-1 overflow-auto">
               {items.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                <div className="flex items-center justify-center h-full text-sm text-gray-500 italic">
                   데이터가 없습니다.
                 </div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
+                  <thead className="bg-[#f6f1e9] sticky top-0 border-b-2 border-gray-800">
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">상품명</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">가격</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">상태</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">날짜</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600">작업</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">상품명</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">가격</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">상태</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">날짜</th>
+                      <th className="px-4 py-2 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">작업</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {items.map((item) => {
+                  <tbody className="divide-y divide-gray-300">
+                    {items.map((item, idx) => {
                       const payId = item.additionalData?.payId || item._id;
                       return (
-                        <tr key={item._id} className="hover:bg-gray-50">
+                        <tr key={item._id} className={`${idx % 2 === 0 ? 'bg-white/80' : 'bg-white/60'} hover:bg-yellow-50/70 transition-colors`}>
                           <td className="px-4 py-3">
-                            <div className="font-medium text-gray-900">{item.product.name}</div>
-                            <div className="text-xs text-gray-500">{item.merchantName}</div>
+                            <div className="font-bold text-gray-900">{item.product.name}</div>
+                            <div className="text-xs text-gray-600">{item.merchantName}</div>
                           </td>
-                          <td className="px-4 py-3 text-gray-900">
+                          <td className="px-4 py-3 text-gray-900 font-mono font-bold">
                             ₩{item.product?.price?.toLocaleString() ?? '0'}
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                              className={`inline-flex px-2 py-1 text-xs font-bold border-2 ${
                                 item.status.color === "BLACK"
-                                  ? "bg-gray-100 text-gray-800"
-                                  : "bg-blue-100 text-blue-800"
+                                  ? "bg-gray-100 text-gray-800 border-gray-800"
+                                  : "bg-[#2a9d8f] text-white border-gray-800"
                               }`}
                             >
                               {item.status.text}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-gray-600">
+                          <td className="px-4 py-3 text-gray-700 font-mono">
                             {new Date(item.date).toLocaleDateString("ko-KR")}
                           </td>
                           <td className="px-4 py-3">
@@ -423,7 +423,7 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                                 const orderNo = item.additionalData?.orderNo;
                                 fetchDetail(payId, serviceType, orderNo);
                               }}
-                              className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                              className="text-xs px-3 py-1.5 font-bold uppercase tracking-wider bg-gray-800 text-[#fffef0] border-2 border-gray-800 hover:bg-gray-700 transition-colors"
                             >
                               상세보기
                             </button>
@@ -438,17 +438,17 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
           </div>
 
           {/* Detail Table */}
-          <div className="flex-1 flex flex-col bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-sm font-semibold text-gray-900">거래 상세</h2>
+          <div className="flex-1 flex flex-col bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
+            <div className="px-4 py-3 border-b-2 border-gray-800 bg-[#f6f1e9]">
+              <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">거래 상세</h2>
             </div>
             <div className="flex-1 overflow-auto p-4">
               {detailLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-800" />
                 </div>
               ) : detailError ? (
-                <div className="text-sm text-red-600">{detailError}</div>
+                <div className="text-sm text-[#e76f51] font-bold">{detailError}</div>
               ) : detailData?.result ? (
                 <div className="space-y-4 text-sm">
                   {/* LOCALPAY 응답 */}
@@ -456,8 +456,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                     <>
                       {/* 주문 정보 */}
                       <div>
-                        <div className="text-xs font-semibold text-gray-500 uppercase mb-1">주문 정보</div>
-                        <div className="bg-gray-50 rounded p-3 space-y-2">
+                        <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">주문 정보</div>
+                        <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                           {detailData.result.order.orderNo && (
                             <div className="flex justify-between">
                               <span className="text-gray-600">주문번호:</span>
@@ -496,9 +496,9 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       {/* 상품 주문 정보 */}
                       {detailData.result.productOrders && detailData.result.productOrders.length > 0 && (
                         <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase mb-1">상품 주문</div>
+                          <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">상품 주문</div>
                           {detailData.result.productOrders.map((productOrder, idx) => (
-                            <div key={idx} className="bg-gray-50 rounded p-3 space-y-2 mb-2">
+                            <div key={idx} className="bg-white border-2 border-gray-800 p-3 space-y-2 mb-2">
                               <div className="flex items-start gap-3">
                                 {productOrder.productImageUrl && (
                                   <img
@@ -608,8 +608,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       {/* 결제 정보 */}
                       {detailData.result.pay && (
                         <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase mb-1">결제 금액</div>
-                          <div className="bg-gray-50 rounded p-3 space-y-2">
+                          <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">결제 금액</div>
+                          <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                             {detailData.result.pay.totalInitPayAmount !== undefined && (
                               <div className="flex justify-between">
                                 <span className="text-gray-600">총 결제금액:</span>
@@ -683,8 +683,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       {/* 배송지 정보 */}
                       {detailData.result.deliveryAddress && !detailData.result.deliveryAddress.deliveryNothing && (
                         <div>
-                          <div className="text-xs font-semibold text-gray-500 uppercase mb-1">배송지 정보</div>
-                          <div className="bg-gray-50 rounded p-3 space-y-2">
+                          <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">배송지 정보</div>
+                          <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                             {detailData.result.deliveryAddress.receiverName && (
                               <div className="flex justify-between">
                                 <span className="text-gray-600">수령인:</span>
@@ -737,9 +737,9 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       {detailData.result.productBundleGroups &&
                         Object.values(detailData.result.productBundleGroups).length > 0 && (
                           <div>
-                            <div className="text-xs font-semibold text-gray-500 uppercase mb-1">가맹점 정보</div>
+                            <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">가맹점 정보</div>
                             {Object.values(detailData.result.productBundleGroups).map((merchant, idx) => (
-                              <div key={idx} className="bg-gray-50 rounded p-3 space-y-2">
+                              <div key={idx} className="bg-white border-2 border-gray-800 p-3 space-y-2">
                                 {merchant.merchantName && (
                                   <div className="flex justify-between">
                                     <span className="text-gray-600">가맹점명:</span>
@@ -782,8 +782,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                       {/* 일반 결제 응답 */}
                       {detailData.result.payment && (
                     <div>
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">결제 정보</div>
-                      <div className="bg-gray-50 rounded p-3 space-y-2">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">결제 정보</div>
+                      <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                         {detailData.result.payment.id && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">결제 ID:</span>
@@ -814,8 +814,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
 
                   {detailData.result.product && (
                     <div>
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">상품 정보</div>
-                      <div className="bg-gray-50 rounded p-3 space-y-2">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">상품 정보</div>
+                      <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                         {detailData.result.product.name && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">상품명:</span>
@@ -834,8 +834,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
 
                   {detailData.result.amount && (
                     <div>
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">결제 금액</div>
-                      <div className="bg-gray-50 rounded p-3 space-y-2">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">결제 금액</div>
+                      <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                         {detailData.result.amount.totalAmount !== undefined && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">총 결제금액:</span>
@@ -873,8 +873,8 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
 
                   {detailData.result.merchant && (
                     <div>
-                      <div className="text-xs font-semibold text-gray-500 uppercase mb-1">가맹점 정보</div>
-                      <div className="bg-gray-50 rounded p-3 space-y-2">
+                      <div className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">가맹점 정보</div>
+                      <div className="bg-white border-2 border-gray-800 p-3 space-y-2">
                         {detailData.result.merchant.name && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">가맹점명:</span>
@@ -902,7 +902,7 @@ export const NaverExperimentalCollector = ({ account }: NaverExperimentalCollect
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-gray-400">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
+                <div className="text-sm text-gray-500 italic">목록에서 항목을 선택하면 상세 정보가 표시됩니다.</div>
               )}
             </div>
           </div>

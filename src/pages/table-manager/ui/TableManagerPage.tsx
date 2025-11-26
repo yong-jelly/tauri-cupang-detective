@@ -77,9 +77,9 @@ export const TableManagerPage = () => {
     try {
       await invoke("truncate_table", { tableName });
       alert("테이블이 초기화되었습니다.");
-      fetchTables(); // 목록 갱신 (행 수 업데이트)
+      fetchTables();
       if (selectedTable === tableName) {
-        fetchTableData(tableName, 1); // 데이터 뷰 갱신
+        fetchTableData(tableName, 1);
       }
     } catch (err) {
       alert(`초기화 실패: ${err}`);
@@ -89,37 +89,46 @@ export const TableManagerPage = () => {
   const totalPages = tableData ? Math.ceil(tableData.totalCount / limit) : 0;
 
   return (
-    <div className="flex h-full bg-gray-50 overflow-hidden">
+    <div className="flex h-full bg-[#fdfbf7] overflow-hidden font-mono">
       {/* Left Sidebar: Table List */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        <div className="h-16 border-b border-gray-200 flex items-center px-4 justify-between">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+      <div className="w-72 bg-[#fffef0] border-r-2 border-gray-800 flex flex-col">
+        <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-4 justify-between">
+          <h2 className="font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wider text-sm">
             <Database className="w-4 h-4" />
             테이블 목록
           </h2>
-          <button onClick={fetchTables} className="text-gray-500 hover:text-gray-700">
+          <button 
+            onClick={fetchTables} 
+            className="w-8 h-8 flex items-center justify-center border-2 border-gray-800 bg-white hover:bg-gray-100 text-gray-600 transition-colors"
+          >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-3">
           {loading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-800" />
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-2">
               {tables.map((table) => (
                 <button
                   key={table.name}
                   onClick={() => handleTableSelect(table.name)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm flex justify-between items-center group transition-colors ${
+                  className={`w-full text-left px-3 py-2.5 text-sm flex justify-between items-center transition-all border-2 ${
                     selectedTable === table.name
-                      ? "bg-blue-50 text-blue-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-100"
+                      ? "bg-gray-800 text-[#fffef0] border-gray-800 shadow-[2px_2px_0px_0px_rgba(31,41,55,0.4)]"
+                      : "bg-white text-gray-700 border-gray-800 hover:bg-[#f6f1e9]"
                   }`}
                 >
-                  <div className="truncate flex-1">{table.name}</div>
-                  <div className="text-xs text-gray-400 ml-2">{table.rowCount.toLocaleString()}</div>
+                  <div className="truncate flex-1 font-medium">{table.name}</div>
+                  <div className={`text-xs ml-2 px-2 py-0.5 border ${
+                    selectedTable === table.name
+                      ? "border-[#fffef0]/30 text-[#fffef0]"
+                      : "border-gray-400 text-gray-500"
+                  }`}>
+                    {table.rowCount.toLocaleString()}
+                  </div>
                 </button>
               ))}
             </div>
@@ -131,50 +140,57 @@ export const TableManagerPage = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         {selectedTable ? (
           <>
-            <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+            <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">{selectedTable}</h1>
+                <h1 className="text-xl font-bold text-gray-900 font-serif">{selectedTable}</h1>
                 {tableData && (
-                  <p className="text-sm text-gray-500">
-                    총 {tableData.totalCount.toLocaleString()}개 행 중 {(page - 1) * limit + 1}-
-                    {Math.min(page * limit, tableData.totalCount)} 표시
+                  <p className="text-xs text-gray-600 tracking-wider">
+                    총 <span className="font-bold">{tableData.totalCount.toLocaleString()}</span>개 행 중{" "}
+                    <span className="font-bold">{(page - 1) * limit + 1}-{Math.min(page * limit, tableData.totalCount)}</span> 표시
                   </p>
                 )}
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleTruncate(selectedTable)}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-red-200 text-red-600 rounded-md hover:bg-red-50 text-sm transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  데이터 초기화
-                </button>
-              </div>
+              <button
+                onClick={() => handleTruncate(selectedTable)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#e76f51] bg-white border-2 border-[#e76f51] hover:bg-[#e76f51]/10 transition-colors shadow-[2px_2px_0px_0px_rgba(231,111,81,0.4)]"
+              >
+                <Trash2 className="w-4 h-4" />
+                데이터 초기화
+              </button>
             </div>
 
             <div className="flex-1 overflow-auto p-6">
               {dataLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <Loader2 className="w-8 h-8 animate-spin text-gray-800" />
+                  <span className="text-sm text-gray-600 uppercase tracking-wider font-bold">데이터 로딩 중...</span>
                 </div>
               ) : tableData && tableData.columns.length > 0 ? (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="bg-white border-2 border-gray-800 shadow-[6px_6px_0px_0px_rgba(31,41,55,1)] overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left whitespace-nowrap">
-                      <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-200">
+                      <thead className="bg-[#f6f1e9] text-gray-800 font-bold border-b-2 border-gray-800 uppercase tracking-wider text-xs">
                         <tr>
                           {tableData.columns.map((col) => (
-                            <th key={col} className="px-4 py-3">
+                            <th key={col} className="px-4 py-3 border-r border-gray-300 last:border-r-0">
                               {col}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="bg-[linear-gradient(transparent_95%,#ede9dd_95%)] bg-[length:100%_2.5rem]">
                         {tableData.rows.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-gray-50">
+                          <tr 
+                            key={idx} 
+                            className={`h-10 transition-colors ${
+                              idx % 2 === 0 ? "bg-white/80" : "bg-white/60"
+                            } hover:bg-yellow-50/70`}
+                          >
                             {row.map((cell, cellIdx) => (
-                              <td key={cellIdx} className="px-4 py-2 text-gray-600 max-w-xs truncate">
+                              <td 
+                                key={cellIdx} 
+                                className="px-4 py-2 text-gray-700 max-w-xs truncate border-r border-gray-200 last:border-r-0"
+                              >
                                 {typeof cell === "object" && cell !== null ? JSON.stringify(cell) : String(cell)}
                               </td>
                             ))}
@@ -182,7 +198,7 @@ export const TableManagerPage = () => {
                         ))}
                         {tableData.rows.length === 0 && (
                           <tr>
-                            <td colSpan={tableData.columns.length} className="px-4 py-8 text-center text-gray-400">
+                            <td colSpan={tableData.columns.length} className="px-4 py-12 text-center text-gray-500 italic">
                               데이터가 없습니다.
                             </td>
                           </tr>
@@ -192,7 +208,7 @@ export const TableManagerPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="flex items-center justify-center h-full text-gray-500 italic">
                   데이터를 불러올 수 없습니다.
                 </div>
               )}
@@ -200,21 +216,29 @@ export const TableManagerPage = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="h-14 border-t border-gray-200 bg-white flex items-center justify-center px-6 gap-4 flex-shrink-0">
+              <div className="h-14 border-t-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-center px-6 gap-2 flex-shrink-0">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1 || dataLoading}
-                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`p-2 border-2 border-gray-800 transition-colors ${
+                    page === 1 || dataLoading
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white hover:bg-gray-100 text-gray-800"
+                  }`}
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                <span className="text-sm text-gray-600">
+                <div className="px-4 py-2 bg-white border-2 border-gray-800 font-bold text-sm min-w-[100px] text-center">
                   {page} / {totalPages}
-                </span>
+                </div>
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages || dataLoading}
-                  className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className={`p-2 border-2 border-gray-800 transition-colors ${
+                    page === totalPages || dataLoading
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-white hover:bg-gray-100 text-gray-800"
+                  }`}
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -222,8 +246,9 @@ export const TableManagerPage = () => {
             )}
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400">
-            좌측 목록에서 테이블을 선택하세요.
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-gray-500">
+            <Database className="w-12 h-12 text-gray-300" />
+            <p className="font-serif text-lg italic">좌측 목록에서 테이블을 선택하세요</p>
           </div>
         )}
       </div>

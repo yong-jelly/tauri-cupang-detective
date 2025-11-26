@@ -226,7 +226,7 @@ function App() {
           {activePage === "accounts" && (
             <AccountManagementPage onAddAccount={() => handleNavigate("account-add")} />
           )}
-          {activePage === "system" && <SystemSettingsPage onReady={handleDbReady} />}
+          {activePage === "system" && <SystemSettingsPage />}
           {activePage === "table-manager" && <TableManagerPage />}
           {activePage.startsWith("transactions-") && selectedAccount && (
             <TransactionListPage account={selectedAccount} />

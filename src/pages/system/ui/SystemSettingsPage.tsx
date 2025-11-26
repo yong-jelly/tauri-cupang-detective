@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { getVersion } from "@tauri-apps/api/app";
@@ -39,24 +39,24 @@ const HeroLayout = ({
   onCreateNew: () => void;
 }) => {
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center gap-6 overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#fff8f0] via-white to-[#f0f7ff]" />
-      <div className="relative max-w-xl space-y-4">
-        <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
+    <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center gap-6 overflow-hidden bg-[#fdfbf7] font-mono">
+      <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(45,36,22,0.03)_25%,rgba(45,36,22,0.03)_50%,transparent_50%,transparent_75%,rgba(45,36,22,0.03)_75%)] bg-[length:20px_20px]" />
+      <div className="relative max-w-xl space-y-6">
+        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#2d2416] bg-[#e9c46a] border-2 border-gray-800 px-4 py-2 shadow-[3px_3px_0px_0px_rgba(31,41,55,1)]">
           <Sparkles className="w-3 h-3" />
           지출 탐정 · private beta
         </div>
-        <h2 className="text-3xl font-bold text-gray-900">안녕 탐정님, 사건을 파헤쳐볼까요?</h2>
-        <p className="text-base text-gray-600 leading-relaxed">
+        <h2 className="text-4xl font-bold text-gray-900 font-serif tracking-tight">안녕 탐정님, 사건을 파헤쳐볼까요?</h2>
+        <p className="text-base text-gray-700 leading-relaxed">
           지출 탐정은 SQLite 파일 하나로 모든 영수증 단서를 보관합니다. 기존 사건 기록을 불러오거나, 새로운 수사 노트를
           만들고 첫 계정을 등록해보세요.
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-center pt-4">
           <button
             type="button"
             onClick={onSelectExisting}
             disabled={busyAction === "load"}
-            className="px-5 py-3 rounded-xl border border-gray-300 text-gray-800 font-semibold bg-white hover:shadow disabled:opacity-60"
+            className="px-6 py-3 text-sm font-bold uppercase tracking-wider text-gray-800 bg-white border-2 border-gray-800 hover:bg-[#f6f1e9] disabled:opacity-60 transition-colors shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]"
           >
             {busyAction === "load" ? "단서 수집 중..." : "DB 파일 불러오기"}
           </button>
@@ -64,16 +64,16 @@ const HeroLayout = ({
             type="button"
             onClick={onCreateNew}
             disabled={busyAction === "init"}
-            className="px-5 py-3 rounded-xl font-semibold text-white bg-[#1164A3] hover:bg-[#0f558b] shadow disabled:bg-[#96b8d2]"
+            className="px-6 py-3 text-sm font-bold uppercase tracking-wider text-[#fffef0] bg-gray-800 border-2 border-gray-800 hover:bg-gray-700 disabled:bg-gray-400 transition-colors shadow-[4px_4px_0px_0px_rgba(196,154,26,1)]"
           >
             {busyAction === "init" ? "노트 작성 중..." : "새 사건 노트 만들기"}
           </button>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        {feedback && <p className="text-sm text-green-600">{feedback}</p>}
+        {error && <p className="text-sm text-[#e76f51] font-bold mt-4">{error}</p>}
+        {feedback && <p className="text-sm text-[#2a9d8f] font-bold mt-4">{feedback}</p>}
       </div>
       {version && (
-        <div className="relative mt-10 text-xs text-gray-400 tracking-widest uppercase">
+        <div className="relative mt-10 text-xs text-gray-500 tracking-[0.3em] uppercase font-bold">
           지출 탐정 · v{version}
         </div>
       )}
@@ -91,27 +91,36 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState<string | null>(null);
   const [pendingPath, setPendingPath] = useState<string>("");
+  
+  // onReady 참조를 안정화하고 초기 마운트 시에만 호출되도록 함
+  const onReadyRef = useRef(onReady);
+  const initialFetchDoneRef = useRef(false);
+  
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
 
   useEffect(() => {
     getVersion().then(setVersion).catch(() => setVersion(null));
   }, []);
 
   const updateStatus = useCallback(
-    (next: DbStatus) => {
+    (next: DbStatus, isInitialFetch = false) => {
       setStatus(next);
-      if (next.configured && next.exists) {
-        onReady?.(next);
+      // 초기 fetch 시에만 onReady 호출 (무한 루프 방지)
+      if (next.configured && next.exists && isInitialFetch) {
+        onReadyRef.current?.(next);
       }
     },
-    [onReady],
+    [],
   );
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (isInitialFetch = false) => {
     setLoading(true);
     setError(null);
     try {
       const result = await invoke<DbStatus>("get_db_status");
-      updateStatus(result);
+      updateStatus(result, isInitialFetch);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -120,7 +129,11 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }, [updateStatus]);
 
   useEffect(() => {
-    fetchStatus();
+    // 초기 마운트 시에만 onReady 호출
+    if (!initialFetchDoneRef.current) {
+      initialFetchDoneRef.current = true;
+      fetchStatus(true);
+    }
   }, [fetchStatus]);
 
   useEffect(() => {
@@ -146,7 +159,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
         return;
       }
       const result = await invoke<DbStatus>("load_existing_db", { path: selected });
-      updateStatus(result);
+      updateStatus(result, true); // 사용자 액션이므로 onReady 호출
       setFeedback("기존 데이터베이스를 불러왔습니다.");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -172,7 +185,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
       const fileName = `my-receipt-tracker-${formatTimestamp(new Date())}.db`;
       const fullPath = await join(directory, fileName);
       const result = await invoke<DbStatus>("init_db", { path: fullPath });
-      updateStatus(result);
+      updateStatus(result, true); // 사용자 액션이므로 onReady 호출
       setFeedback(`새 DB를 생성했습니다: ${fileName}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -191,7 +204,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
       setError(null);
       setFeedback(null);
       const result = await invoke<DbStatus>("load_existing_db", { path: pendingPath.trim() });
-      updateStatus(result);
+      updateStatus(result, true); // 사용자 액션이므로 onReady 호출
       setFeedback("데이터베이스를 불러왔습니다.");
       setPendingPath("");
     } catch (err) {
@@ -213,18 +226,16 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }, [status?.sizeBytes]);
 
   const renderLoading = () => (
-    <div className="flex flex-col h-full bg-gray-50">
-      <header className="h-16 border-b border-gray-200 bg-white flex items-center px-6">
+    <div className="flex flex-col h-full bg-[#fdfbf7] font-mono">
+      <header className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
         <div>
-          <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">System</p>
-          <h1 className="text-xl font-semibold text-gray-900">시스템 설정</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-gray-600 font-bold">System</p>
+          <h1 className="text-xl font-bold text-gray-900 font-serif">시스템 설정</h1>
         </div>
       </header>
-      <div className="flex-1 flex items-center justify-center text-gray-500">
-        <div className="inline-flex items-center gap-2 text-sm">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          상태를 불러오는 중...
-        </div>
+      <div className="flex-1 flex flex-col items-center justify-center text-gray-600 gap-4">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-800" />
+        <span className="text-sm font-bold uppercase tracking-wider">상태를 불러오는 중...</span>
       </div>
     </div>
   );
@@ -235,7 +246,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
 
   if (!status.configured || !status.exists) {
     return (
-      <div className="flex flex-col h-full bg-gradient-to-tr from-[#f4f9ff] to-white">
+      <div className="flex flex-col h-full bg-[#fdfbf7]">
         <div className="flex-1 flex flex-col">
           <HeroLayout
             version={version}
@@ -251,71 +262,79 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <header className="h-16 border-b border-gray-200 bg-white flex items-center px-6">
+    <div className="flex flex-col h-full bg-[#fdfbf7] font-mono">
+      <header className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
         <div>
-          <p className="text-xs uppercase tracking-widest text-gray-400 font-semibold">System</p>
-          <h1 className="text-xl font-semibold text-gray-900">시스템 설정</h1>
+          <p className="text-xs uppercase tracking-[0.2em] text-gray-600 font-bold">System</p>
+          <h1 className="text-xl font-bold text-gray-900 font-serif">시스템 설정</h1>
         </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {feedback && <div className="px-4 py-2 rounded bg-green-50 text-green-700 text-sm">{feedback}</div>}
-        {error && <div className="px-4 py-2 rounded bg-red-50 text-red-700 text-sm">{error}</div>}
+        {feedback && (
+          <div className="px-4 py-3 border-2 border-[#2a9d8f] bg-[#2a9d8f]/10 text-[#264653] text-sm font-bold">
+            {feedback}
+          </div>
+        )}
+        {error && (
+          <div className="px-4 py-3 border-2 border-[#e76f51] bg-[#e76f51]/10 text-[#e76f51] text-sm font-bold">
+            {error}
+          </div>
+        )}
 
-        <section className="bg-white border rounded-lg p-5 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
-              <Database className="w-5 h-5" />
+        <section className="bg-[#fffef0] border-2 border-gray-800 p-6 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#264653] border-2 border-gray-800 flex items-center justify-center">
+              <Database className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">데이터베이스 요약</h2>
-              <p className="text-sm text-gray-500">SQLite 경로와 상태, 최근 백업 정보를 확인합니다.</p>
+              <h2 className="text-lg font-bold text-gray-900 font-serif">데이터베이스 요약</h2>
+              <p className="text-sm text-gray-600">SQLite 경로와 상태, 최근 백업 정보를 확인합니다.</p>
             </div>
           </div>
 
-          <dl className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mt-6">
-            <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
-              <dt className="text-xs font-semibold text-gray-500 uppercase">현재 경로</dt>
+          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-6">
+            <div className="border-2 border-gray-800 p-4 bg-white">
+              <dt className="text-xs font-bold text-gray-600 uppercase tracking-wider">현재 경로</dt>
               <dd className="mt-2 text-sm font-mono text-gray-900 break-all">{status.path}</dd>
             </div>
-            <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
-              <dt className="text-xs font-semibold text-gray-500 uppercase">파일 크기</dt>
-              <dd className="mt-2 text-lg font-semibold text-gray-900">{dbSizeLabel}</dd>
+            <div className="border-2 border-gray-800 p-4 bg-white">
+              <dt className="text-xs font-bold text-gray-600 uppercase tracking-wider">파일 크기</dt>
+              <dd className="mt-2 text-2xl font-bold text-gray-900 font-mono">{dbSizeLabel}</dd>
               <p className="text-xs text-gray-500 mt-1">DB 상태를 새로고침하면 업데이트됩니다.</p>
             </div>
-            <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
-              <dt className="text-xs font-semibold text-gray-500 uppercase">최근 백업</dt>
-              <dd className="mt-2 text-sm font-semibold text-gray-900">{lastBackupAt ?? "없음"}</dd>
+            <div className="border-2 border-gray-800 p-4 bg-white">
+              <dt className="text-xs font-bold text-gray-600 uppercase tracking-wider">최근 백업</dt>
+              <dd className="mt-2 text-sm font-bold text-gray-900">{lastBackupAt ?? "없음"}</dd>
               <p className="text-xs text-gray-500 mt-1">백업 실행 시 자동 갱신 예정</p>
             </div>
           </dl>
         </section>
 
-        <section className="bg-white border rounded-lg p-5 shadow-sm space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center">
-              <FolderOutput className="w-5 h-5" />
+        <section className="bg-[#fffef0] border-2 border-gray-800 p-6 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#9b59b6] border-2 border-gray-800 flex items-center justify-center">
+              <FolderOutput className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">DB 위치 설정</h2>
-              <p className="text-sm text-gray-500">원하는 경로로 이동하거나 새로 생성할 수 있습니다.</p>
+              <h2 className="text-lg font-bold text-gray-900 font-serif">DB 위치 설정</h2>
+              <p className="text-sm text-gray-600">원하는 경로로 이동하거나 새로 생성할 수 있습니다.</p>
             </div>
           </div>
 
           <div className="space-y-4">
-            <label className="block text-sm font-medium text-gray-700">새 경로</label>
+            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider">새 경로</label>
             <div className="flex flex-col gap-3 sm:flex-row">
               <input
                 value={pendingPath}
                 onChange={(e) => setPendingPath(e.target.value)}
-                className="flex-1 border rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 border-2 border-gray-800 px-3 py-2 text-sm font-mono bg-white focus:outline-none focus:ring-0"
                 placeholder="/Users/kwon/db.sqlite"
               />
               <div className="flex gap-3">
                 <button
                   type="button"
-                  className="px-3 py-2 text-sm border rounded-lg text-gray-600 hover:bg-gray-50"
+                  className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-gray-500 bg-gray-200 border-2 border-gray-400 cursor-not-allowed"
                   disabled
                 >
                   찾아보기
@@ -323,7 +342,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
                 <button
                   type="button"
                   onClick={handleLoadDb}
-                  className="px-4 py-2 text-sm rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300"
+                  className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#fffef0] bg-gray-800 border-2 border-gray-800 hover:bg-gray-700 disabled:bg-gray-400 transition-colors shadow-[2px_2px_0px_0px_rgba(31,41,55,0.4)]"
                   disabled={busyAction === "load"}
                 >
                   {busyAction === "load" ? "불러오는 중..." : "경로 저장"}
@@ -336,14 +355,14 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
           </div>
         </section>
 
-        <section className="bg-white border rounded-lg p-5 shadow-sm space-y-5">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5" />
+        <section className="bg-[#fffef0] border-2 border-gray-800 p-6 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] space-y-5">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-[#e76f51] border-2 border-gray-800 flex items-center justify-center">
+              <ShieldAlert className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">유지보수 도구</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-lg font-bold text-gray-900 font-serif">유지보수 도구</h2>
+              <p className="text-sm text-gray-600">
                 초기화, 백업, 스키마 검증 등 위험 작업을 실행하기 전에 항상 데이터를 백업하세요.
               </p>
             </div>
@@ -352,21 +371,21 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
           <div className="grid gap-4 md:grid-cols-3">
             <button
               type="button"
-              className="px-4 py-3 border rounded-lg text-sm font-semibold text-blue-700 border-blue-200 bg-blue-50 cursor-not-allowed"
+              className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#264653] bg-[#2a9d8f]/20 border-2 border-[#264653] cursor-not-allowed"
               disabled
             >
               백업 생성
             </button>
             <button
               type="button"
-              className="px-4 py-3 border rounded-lg text-sm font-semibold text-gray-700 border-gray-200 bg-gray-50 cursor-not-allowed"
+              className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-gray-600 bg-gray-200 border-2 border-gray-500 cursor-not-allowed"
               disabled
             >
               스키마 초기화
             </button>
             <button
               type="button"
-              className="px-4 py-3 border rounded-lg text-sm font-semibold text-red-700 border-red-200 bg-red-50 cursor-not-allowed"
+              className="px-4 py-3 text-xs font-bold uppercase tracking-wider text-[#e76f51] bg-[#e76f51]/10 border-2 border-[#e76f51] cursor-not-allowed"
               disabled
             >
               DB 초기화
@@ -378,14 +397,14 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
           </p>
         </section>
 
-        <section className="bg-white border rounded-lg p-5 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+        <section className="bg-[#fffef0] border-2 border-gray-800 p-6 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)] space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">데이터 미리보기</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-lg font-bold text-gray-900 font-serif">데이터 미리보기</h2>
+              <p className="text-sm text-gray-600">
                 임시로 최근 레코드를 확인하는 도구입니다. 현재 테이블 목록:{" "}
                 {status.tables.length ? (
-                  <span className="font-mono text-gray-800">{status.tables.join(", ")}</span>
+                  <span className="font-mono text-gray-800 font-bold">{status.tables.join(", ")}</span>
                 ) : (
                   "—"
                 )}
@@ -395,7 +414,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
               <select
                 value={previewTable}
                 onChange={(e) => setPreviewTable(e.target.value)}
-                className="border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="border-2 border-gray-800 px-3 py-2 text-sm font-mono bg-white focus:outline-none focus:ring-0"
               >
                 {TABLE_OPTIONS.map((table) => (
                   <option key={table} value={table}>
@@ -405,7 +424,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
               </select>
               <button
                 type="button"
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm border rounded-lg text-gray-700 border-gray-200 cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-500 bg-gray-200 border-2 border-gray-400 cursor-not-allowed"
                 disabled
               >
                 <RefreshCw className="w-4 h-4" />
@@ -414,7 +433,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
             </div>
           </div>
 
-          <div className="border rounded-lg bg-gray-50 min-h-[240px] flex items-center justify-center text-sm text-gray-400">
+          <div className="border-2 border-gray-800 bg-white min-h-[240px] flex items-center justify-center text-sm text-gray-500 italic">
             SQLite 연결 후 결과가 여기에 표시됩니다.
           </div>
         </section>

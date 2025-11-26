@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 import { parseCurlCommand } from "@shared/lib/parseCurl";
 import type { AccountProvider, ProxyResponse } from "@shared/api/types";
-import { CheckCircle2, Loader2, Sparkles, X } from "lucide-react";
+import { CheckCircle2, Loader2, Sparkles, X, ChevronLeft } from "lucide-react";
 
 type Step = "provider" | "alias" | "curl" | "success";
 
@@ -100,39 +100,45 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
     }
   }, [provider, alias, curl, onComplete]);
 
+  // 단계 번호
+  const stepNumber = step === "provider" ? 1 : step === "alias" ? 2 : step === "curl" ? 3 : 4;
+
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center gap-6 overflow-hidden bg-gradient-to-br from-[#fff8f0] via-white to-[#f0f7ff]">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#fff8f0] via-white to-[#f0f7ff]" />
+    <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center gap-6 overflow-hidden bg-[#fdfbf7] font-mono">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30" />
+      
       {showCloseButton && onClose && (
         <button
           onClick={onClose}
-          className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors z-10"
+          className="absolute top-6 right-6 p-2 border-2 border-[#2d2416] bg-[#fffef0] text-[#2d2416] hover:bg-[#e8dcc8] transition-colors z-10"
           title="닫기"
         >
           <X className="w-5 h-5" />
         </button>
       )}
-      <div className="relative max-w-2xl w-full space-y-6">
+      
+      <div className="relative max-w-2xl w-full space-y-8">
         {step === "provider" && (
           <>
-            <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full">
-              <Sparkles className="w-3 h-3" />
+            <div className="inline-flex items-center gap-2 text-sm font-bold uppercase text-[#2d2416] bg-[#e8dcc8] border-2 border-[#2d2416] px-4 py-2 shadow-[3px_3px_0px_0px_rgba(196,154,26,1)]">
+              <Sparkles className="w-4 h-4 text-[#c49a1a]" />
               지출 탐정 · 첫 계정 등록
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">어느 플랫폼부터 시작할까요?</h2>
-            <p className="text-base text-gray-600 leading-relaxed">
+            <h2 className="text-4xl font-black text-[#2d2416] tracking-tight uppercase">어느 플랫폼부터 시작할까요?</h2>
+            <p className="text-lg text-[#5c4d3c] tracking-wide">
               연결할 플랫폼을 선택해주세요. 나중에 더 추가할 수 있습니다.
             </p>
-            <div className="grid gap-4 sm:grid-cols-2 mt-8">
+            <div className="grid gap-6 sm:grid-cols-2 mt-8">
               {PROVIDERS.map((p) => (
                 <button
                   key={p.value}
                   onClick={() => handleProviderSelect(p.value)}
-                  className="p-6 border-2 border-gray-200 rounded-xl hover:border-blue-400 hover:shadow-lg transition-all text-left bg-white"
+                  className="p-6 border-2 border-[#2d2416] bg-[#fffef0] hover:bg-[#e8dcc8] hover:shadow-[6px_6px_0px_0px_rgba(45,36,22,1)] transition-all text-left shadow-[4px_4px_0px_0px_rgba(45,36,22,1)]"
                 >
-                  <div className="text-3xl mb-2">{p.icon}</div>
-                  <div className="text-lg font-semibold text-gray-900 mb-1">{p.label}</div>
-                  <div className="text-sm text-gray-500">{p.description}</div>
+                  <div className="text-4xl mb-3">{p.icon}</div>
+                  <div className="text-xl font-black text-[#2d2416] mb-2 uppercase tracking-wide">{p.label}</div>
+                  <div className="text-sm text-[#5c4d3c] tracking-wide">{p.description}</div>
                 </button>
               ))}
             </div>
@@ -141,29 +147,32 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
 
         {step === "alias" && (
           <>
-            <div className="text-xs font-semibold uppercase text-gray-400 tracking-widest">2단계</div>
-            <h2 className="text-3xl font-bold text-gray-900">계정 별칭을 입력하세요</h2>
-            <p className="text-base text-gray-600">이 계정을 구분하기 위한 이름을 정해주세요.</p>
-            <div className="max-w-md mx-auto space-y-4">
+            <div className="text-sm font-black uppercase text-[#8b7355] tracking-[0.3em] border-b-2 border-dashed border-[#d4c4a8] pb-2">
+              {stepNumber}단계 / 3단계
+            </div>
+            <h2 className="text-4xl font-black text-[#2d2416] tracking-tight uppercase">계정 별칭 입력</h2>
+            <p className="text-lg text-[#5c4d3c] tracking-wide">이 계정을 구분하기 위한 이름을 정해주세요.</p>
+            <div className="max-w-md mx-auto space-y-6">
               <input
                 type="text"
                 value={alias}
                 onChange={(e) => setAlias(e.target.value)}
                 placeholder="예: 네이버 개인계정"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-5 py-4 border-2 border-[#2d2416] bg-[#fffef0] text-lg font-bold text-[#2d2416] placeholder-[#8b7355] focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(196,154,26,1)]"
                 autoFocus
               />
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button
                   onClick={() => setStep("provider")}
-                  className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
+                  className="flex items-center gap-2 px-5 py-3 border-2 border-[#2d2416] bg-[#fffef0] text-[#2d2416] font-bold uppercase tracking-wider hover:bg-[#e8dcc8] transition-colors"
                 >
+                  <ChevronLeft className="w-4 h-4" />
                   이전
                 </button>
                 <button
                   onClick={handleAliasNext}
                   disabled={!alias.trim()}
-                  className="flex-1 px-4 py-3 rounded-xl font-semibold text-white bg-[#1164A3] hover:bg-[#0f558b] disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  className="flex-1 px-5 py-3 bg-[#2d2416] text-[#fffef0] font-bold uppercase tracking-wider hover:bg-[#1a1610] disabled:bg-[#d4c4a8] disabled:text-[#8b7355] disabled:cursor-not-allowed transition-colors shadow-[4px_4px_0px_0px_rgba(196,154,26,1)] disabled:shadow-none"
                 >
                   다음
                 </button>
@@ -174,52 +183,55 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
 
         {step === "curl" && (
           <>
-            <div className="text-xs font-semibold uppercase text-gray-400 tracking-widest">3단계</div>
-            <h2 className="text-3xl font-bold text-gray-900">cURL 명령어를 입력하세요</h2>
-            <p className="text-base text-gray-600">
+            <div className="text-sm font-black uppercase text-[#8b7355] tracking-[0.3em] border-b-2 border-dashed border-[#d4c4a8] pb-2">
+              {stepNumber}단계 / 3단계
+            </div>
+            <h2 className="text-4xl font-black text-[#2d2416] tracking-tight uppercase">cURL 명령어 입력</h2>
+            <p className="text-lg text-[#5c4d3c] tracking-wide">
               브라우저 개발자 도구에서 복사한 cURL 명령어를 붙여넣고 테스트해보세요.
             </p>
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="max-w-3xl mx-auto space-y-6">
               <textarea
                 value={curl}
                 onChange={(e) => setCurl(e.target.value)}
                 placeholder="curl 'https://...' -H '...'"
-                className="w-full min-h-[200px] px-4 py-3 border-2 border-gray-300 rounded-xl font-mono text-sm focus:outline-none focus:border-blue-500 resize-none"
+                className="w-full min-h-[200px] px-5 py-4 border-2 border-[#2d2416] bg-[#fffef0] font-mono text-sm text-[#2d2416] placeholder-[#8b7355] focus:outline-none focus:shadow-[4px_4px_0px_0px_rgba(196,154,26,1)] resize-none"
                 spellCheck={false}
               />
               {testResult && (
                 <div
-                  className={`px-4 py-3 rounded-xl text-sm font-semibold ${
+                  className={`px-5 py-4 border-2 font-bold text-sm ${
                     testResult.success
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : "bg-red-50 text-red-700 border border-red-200"
+                      ? "border-green-700 bg-green-50 text-green-800"
+                      : "border-red-700 bg-red-50 text-red-800"
                   }`}
                 >
                   {testResult.success
-                    ? `✅ 테스트 성공 (Status: ${testResult.status})`
-                    : `❌ 테스트 실패 (Status: ${testResult.status || "Error"})`}
+                    ? `✅ 테스트 성공 (STATUS: ${testResult.status})`
+                    : `❌ 테스트 실패 (STATUS: ${testResult.status || "ERROR"})`}
                 </div>
               )}
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <button
                   onClick={() => setStep("alias")}
-                  className="px-4 py-3 rounded-xl border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50"
+                  className="flex items-center gap-2 px-5 py-3 border-2 border-[#2d2416] bg-[#fffef0] text-[#2d2416] font-bold uppercase tracking-wider hover:bg-[#e8dcc8] transition-colors"
                 >
+                  <ChevronLeft className="w-4 h-4" />
                   이전
                 </button>
                 <button
                   onClick={handleTestCurl}
                   disabled={!curl.trim() || testing || saving}
-                  className="flex-1 px-4 py-3 rounded-xl font-semibold text-white bg-[#1164A3] hover:bg-[#0f558b] disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-5 py-3 bg-[#2d2416] text-[#fffef0] font-bold uppercase tracking-wider hover:bg-[#1a1610] disabled:bg-[#d4c4a8] disabled:text-[#8b7355] disabled:cursor-not-allowed transition-colors shadow-[4px_4px_0px_0px_rgba(196,154,26,1)] disabled:shadow-none flex items-center justify-center gap-2"
                 >
                   {testing ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       테스트 중...
                     </>
                   ) : saving ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       저장 중...
                     </>
                   ) : (
@@ -233,16 +245,16 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
 
         {step === "success" && (
           <>
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 text-green-600 mb-4">
-              <CheckCircle2 className="w-10 h-10" />
+            <div className="inline-flex items-center justify-center w-24 h-24 border-4 border-[#2d2416] bg-[#e8dcc8] text-[#2d2416] mb-6 shadow-[6px_6px_0px_0px_rgba(196,154,26,1)]">
+              <CheckCircle2 className="w-12 h-12" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">계정 등록 완료!</h2>
-            <p className="text-base text-gray-600">이제 지출 탐정을 시작할 수 있습니다.</p>
+            <h2 className="text-4xl font-black text-[#2d2416] tracking-tight uppercase">계정 등록 완료!</h2>
+            <p className="text-lg text-[#5c4d3c] tracking-wide">이제 지출 탐정을 시작할 수 있습니다.</p>
           </>
         )}
 
         {version && (
-          <div className="relative mt-10 text-xs text-gray-400 tracking-widest uppercase">
+          <div className="relative mt-12 text-sm text-[#8b7355] tracking-[0.2em] uppercase border-t-2 border-dashed border-[#d4c4a8] pt-4">
             지출 탐정 · v{version}
           </div>
         )}
@@ -250,4 +262,3 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
     </div>
   );
 };
-

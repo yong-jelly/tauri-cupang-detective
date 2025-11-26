@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Users } from "lucide-react";
 import type { User } from "@shared/api/types";
 import { useAccounts } from "@features/accounts/shared/hooks/useAccounts";
 import { useAccountTest } from "@features/accounts/shared/hooks/useAccountTest";
@@ -64,43 +64,52 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
   }, [testModalOpen, testAccount]);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
-      {/* Header */}
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
-        <h1 className="text-xl font-semibold text-gray-900">계정 관리</h1>
-        <button
-          onClick={onAddAccount}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-        >
-          <Plus className="w-4 h-4" />
-          계정 추가
-        </button>
-      </div>
+    <div className="flex-1 h-full overflow-y-auto bg-[#fdfbf7] font-mono p-8">
+      <div className="max-w-6xl mx-auto space-y-8">
+        {/* 헤더 섹션 */}
+        <div className="border-b-4 border-[#2d2416] pb-4 flex justify-between items-end">
+          <div>
+            <h1 className="text-4xl font-bold text-[#2d2416] tracking-tight mb-2 uppercase">계정 관리</h1>
+            <p className="text-[#8b7355] text-lg tracking-wide">
+              등록된 계정 <span className="font-bold text-[#2d2416]">{accounts.length}</span>개
+            </p>
+          </div>
+          <button
+            onClick={onAddAccount}
+            className="inline-flex items-center gap-3 px-5 py-3 bg-[#2d2416] text-[#fffef0] font-bold text-sm uppercase tracking-wider hover:bg-[#1a1610] transition-colors shadow-[4px_4px_0px_0px_rgba(196,154,26,1)]"
+          >
+            <Plus className="w-5 h-5" />
+            계정 추가
+          </button>
+        </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+        {/* Content */}
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#c49a1a]" />
           </div>
         ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-red-600 mb-4">{error}</p>
+          <div className="text-center p-8 border-4 border-double border-[#2d2416] bg-[#fffef0]">
+            <p className="text-red-700 font-bold text-lg mb-4">{error}</p>
+            <div className="w-full h-px bg-[#2d2416] my-4"></div>
             <button
               onClick={loadAccounts}
-              className="text-blue-600 hover:underline"
+              className="px-5 py-2 border-2 border-[#2d2416] bg-[#fffef0] hover:bg-[#e8dcc8] font-bold text-sm uppercase tracking-wider transition-colors"
             >
               다시 시도
             </button>
           </div>
         ) : accounts.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200 shadow-sm">
-            <p className="text-gray-500 mb-4">등록된 계정이 없습니다.</p>
+          <div className="text-center p-12 bg-[#fffef0] border-2 border-[#2d2416] shadow-[6px_6px_0px_0px_rgba(45,36,22,1)]">
+            <div className="w-16 h-16 mx-auto mb-6 bg-[#e8dcc8] border-2 border-[#2d2416] flex items-center justify-center">
+              <Users className="w-8 h-8 text-[#5c4d3c]" />
+            </div>
+            <p className="text-[#5c4d3c] text-lg mb-6 tracking-wide">등록된 계정이 없습니다</p>
             <button
               onClick={onAddAccount}
-              className="text-blue-600 font-medium hover:underline"
+              className="px-6 py-3 bg-[#2d2416] text-[#fffef0] font-bold uppercase tracking-wider hover:bg-[#1a1610] transition-colors shadow-[3px_3px_0px_0px_rgba(196,154,26,1)]"
             >
-              첫 번째 계정을 추가해보세요
+              첫 번째 계정 추가하기
             </button>
           </div>
         ) : (
@@ -139,4 +148,3 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
     </div>
   );
 };
-
