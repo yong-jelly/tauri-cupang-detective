@@ -145,12 +145,12 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
 
         {/* 요약 카드 섹션 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="bg-[#fffef0] p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
             <div className="flex items-center gap-3 mb-4 text-gray-600">
               <Receipt className="w-6 h-6" />
               <span className="font-bold uppercase tracking-wider text-sm">총 지출액</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-3xl font-bold text-gray-900 font-mono">
               ₩{stats.totalAmount.toLocaleString()}
             </div>
             <div className="mt-2 text-sm text-gray-500 border-t border-dashed border-gray-400 pt-2">
@@ -158,12 +158,12 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
             </div>
           </div>
 
-          <div className="bg-white p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="bg-[#fffef0] p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
             <div className="flex items-center gap-3 mb-4 text-gray-600">
               <TrendingUp className="w-6 h-6" />
               <span className="font-bold uppercase tracking-wider text-sm">일 평균 지출</span>
             </div>
-            <div className="text-3xl font-bold text-gray-900">
+            <div className="text-3xl font-bold text-gray-900 font-mono">
               ₩
               {(stats.totalAmount / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()).toFixed(0).toLocaleString().split('.')[0]}
             </div>
@@ -172,7 +172,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
             </div>
           </div>
 
-          <div className="bg-white p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="bg-[#fffef0] p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
             <div className="flex items-center gap-3 mb-4 text-gray-600">
               <Calendar className="w-6 h-6" />
               <span className="font-bold uppercase tracking-wider text-sm">최다 지출처</span>
@@ -181,15 +181,15 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
               {stats.merchantStats[0]?.name || "-"}
             </div>
             <div className="mt-2 text-sm text-gray-500 border-t border-dashed border-gray-400 pt-2 flex justify-between">
-              <span>₩{stats.merchantStats[0]?.amount.toLocaleString() || 0}</span>
-              <span>{stats.merchantStats[0]?.percentage.toFixed(1)}%</span>
+              <span className="font-mono">₩{stats.merchantStats[0]?.amount.toLocaleString() || 0}</span>
+              <span className="font-mono">{stats.merchantStats[0]?.percentage.toFixed(1)}%</span>
             </div>
           </div>
         </div>
 
         {/* 차트 섹션 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="bg-[#fffef0] p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b-2 border-gray-100 pb-2">
               <TrendingUp className="w-5 h-5" />
               일별 지출 추이 ({selectedDate.getMonth() + 1}월)
@@ -229,7 +229,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
           </div>
 
           {/* 지출처 분석 */}
-          <div className="bg-white p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="bg-[#fffef0] p-6 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2 border-b-2 border-gray-100 pb-2">
               <PieChartIcon className="w-5 h-5" />
               지출처 구성
