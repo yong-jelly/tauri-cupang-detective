@@ -726,6 +726,13 @@ struct CoupangPayment {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct NaverLatestPayment {
+    pay_id: String,
+    paid_at: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct CoupangLatestPayment {
     order_id: String,
     ordered_at: String,
@@ -1475,6 +1482,151 @@ fn save_coupang_payment(
     Ok(())
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchResultItem {
+    id: i64,
+    provider: String,
+    product_name: String,
+    image_url: Option<String>,
+    merchant_name: String,
+    paid_at: String,
+    quantity: i64,
+    unit_price: Option<i64>,
+    line_amount: Option<i64>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SearchResponse {
+    items: Vec<SearchResultItem>,
+    total: i64,
+}
+
+#[tauri::command]
+fn search_products(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    query: String,
+    limit: Option<i64>,
+) -> Result<SearchResponse, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(SearchResponse { items: vec![], total: 0 });
+    }
+    
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let search_term = format!("%{}%", query);
+    let result_limit = limit.unwrap_or(50);
+    
+    let mut items = Vec::new();
+    
+    // 네이버 결제 항목 검색
+    let mut naver_stmt = conn.prepare(
+        "SELECT i.id, i.product_name, i.image_url, p.merchant_name, p.paid_at, 
+                i.quantity, i.unit_price, i.line_amount
+         FROM tbl_naver_payment_item i
+         JOIN tbl_naver_payment p ON i.payment_id = p.id
+         WHERE i.product_name LIKE ?1
+         ORDER BY p.paid_at DESC
+         LIMIT ?2"
+    ).map_err(|e| e.to_string())?;
+    
+    let naver_rows = naver_stmt.query_map(rusqlite::params![&search_term, result_limit], |row| {
+        Ok(SearchResultItem {
+            id: row.get(0)?,
+            provider: "naver".to_string(),
+            product_name: row.get(1)?,
+            image_url: row.get(2)?,
+            merchant_name: row.get(3)?,
+            paid_at: row.get(4)?,
+            quantity: row.get(5)?,
+            unit_price: row.get(6)?,
+            line_amount: row.get(7)?,
+        })
+    }).map_err(|e| e.to_string())?;
+    
+    for row in naver_rows {
+        items.push(row.map_err(|e| e.to_string())?);
+    }
+    
+    // 쿠팡 결제 항목 검색
+    let mut coupang_stmt = conn.prepare(
+        "SELECT i.id, i.product_name, i.image_url, p.merchant_name, p.ordered_at,
+                i.quantity, i.unit_price, i.line_amount
+         FROM tbl_coupang_payment_item i
+         JOIN tbl_coupang_payment p ON i.payment_id = p.id
+         WHERE i.product_name LIKE ?1
+         ORDER BY p.ordered_at DESC
+         LIMIT ?2"
+    ).map_err(|e| e.to_string())?;
+    
+    let coupang_rows = coupang_stmt.query_map(rusqlite::params![&search_term, result_limit], |row| {
+        Ok(SearchResultItem {
+            id: row.get(0)?,
+            provider: "coupang".to_string(),
+            product_name: row.get(1)?,
+            image_url: row.get(2)?,
+            merchant_name: row.get(3)?,
+            paid_at: row.get(4)?,
+            quantity: row.get(5)?,
+            unit_price: row.get(6)?,
+            line_amount: row.get(7)?,
+        })
+    }).map_err(|e| e.to_string())?;
+    
+    for row in coupang_rows {
+        items.push(row.map_err(|e| e.to_string())?);
+    }
+    
+    // 날짜순 정렬
+    items.sort_by(|a, b| b.paid_at.cmp(&a.paid_at));
+    
+    let total = items.len() as i64;
+    
+    // limit 적용
+    if items.len() > result_limit as usize {
+        items.truncate(result_limit as usize);
+    }
+    
+    Ok(SearchResponse { items, total })
+}
+
+#[tauri::command]
+fn get_last_naver_payment(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    user_id: String,
+) -> Result<Option<NaverLatestPayment>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT pay_id, paid_at 
+             FROM tbl_naver_payment 
+             WHERE user_id = ?1 
+             ORDER BY paid_at DESC 
+             LIMIT 1",
+        )
+        .map_err(|e| e.to_string())?;
+    let mut rows = stmt
+        .query(rusqlite::params![user_id])
+        .map_err(|e| e.to_string())?;
+    if let Some(row) = rows.next().map_err(|e| e.to_string())? {
+        Ok(Some(NaverLatestPayment {
+            pay_id: row.get(0).map_err(|e| e.to_string())?,
+            paid_at: row.get(1).map_err(|e| e.to_string())?,
+        }))
+    } else {
+        Ok(None)
+    }
+}
+
 #[tauri::command]
 fn get_last_coupang_payment(
     app_handle: AppHandle,
@@ -1635,9 +1787,11 @@ pub fn run() {
             update_account_credentials,
             save_naver_payment,
             list_naver_payments,
+            get_last_naver_payment,
             list_coupang_payments,
             save_coupang_payment,
             get_last_coupang_payment,
+            search_products,
             get_table_stats,
             truncate_table,
             get_table_data

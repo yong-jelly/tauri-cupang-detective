@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, ProxyResponse } from "@shared/api/types";
-import { Play, Pause, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Play, Pause, CheckCircle, AlertCircle, Clock, Loader2, RefreshCw, FastForward } from "lucide-react";
 import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
 
 // 쿠팡 주문 항목 인터페이스
@@ -75,12 +75,15 @@ interface CoupangTransactionCollectorProps {
   account: User;
 }
 
+type CollectionMode = "incremental" | "full";
+
 export const CoupangTransactionCollector = ({ account }: CoupangTransactionCollectorProps) => {
   const [isCollecting, setIsCollecting] = useState(false);
   const [progress, setProgress] = useState({ total: 0, current: 0, success: 0, failed: 0 });
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [currentPage, setCurrentPage] = useState<number | null>(null);
   const [buildId, setBuildId] = useState<string | null>(null);
+  const [collectionMode, setCollectionMode] = useState<CollectionMode>("incremental");
   const stopRequestedRef = useRef(false);
 
   const addLog = (
@@ -297,10 +300,11 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
     }
   };
 
-  const startCollection = async () => {
+  const startCollection = async (mode: CollectionMode) => {
     if (isCollecting) return;
     
     setIsCollecting(true);
+    setCollectionMode(mode);
     stopRequestedRef.current = false;
     setLogs([]);
     setProgress({ total: 0, current: 0, success: 0, failed: 0 });
@@ -309,20 +313,26 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
     try {
       const headers = getHeaders();
       
-      addLog("마지막 저장된 주문 조회 중...", "info", 0);
-      const lastSaved = await invoke<LastCoupangPaymentInfo | null>("get_last_coupang_payment", {
-        userId: account.id,
-      });
-      if (lastSaved) {
-        addLog(
-          `마지막 저장된 주문: #${lastSaved.orderId} (${new Date(lastSaved.orderedAt).toLocaleString()})`,
-          "info",
-          0
-        );
+      // 마지막 저장된 주문 조회 (증분 수집 모드일 때만 사용)
+      let stopAtOrderId: string | null = null;
+      if (mode === "incremental") {
+        addLog("마지막 저장된 주문 조회 중...", "info", 0);
+        const lastSaved = await invoke<LastCoupangPaymentInfo | null>("get_last_coupang_payment", {
+          userId: account.id,
+        });
+        if (lastSaved) {
+          stopAtOrderId = lastSaved.orderId;
+          addLog(
+            `마지막 저장된 주문: #${lastSaved.orderId} (${new Date(lastSaved.orderedAt).toLocaleString()})`,
+            "info",
+            0
+          );
+        } else {
+          addLog("저장된 주문이 없어 전체 내역을 수집합니다.", "info", 0);
+        }
       } else {
-        addLog("저장된 주문이 없어 전체 내역을 수집합니다.", "info", 0);
+        addLog("전체 수집 모드: 처음부터 모든 내역을 수집합니다.", "info", 0);
       }
-      const stopAtOrderId = lastSaved?.orderId ?? null;
       
       // 1. Build ID 추출 (최초 1회만)
       addLog("Build ID 추출 중...", "info", 0);
@@ -376,6 +386,7 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
           
           const orderId = String(orderItem.orderId);
           
+          // 중복 체크 (증분 수집 모드)
           if (stopAtOrderId && orderId === stopAtOrderId) {
             addLog(`이미 저장된 주문(${orderId})을 발견하여 이후 수집을 중단합니다.`, "info", pageIndex + 1, orderId);
             reachedLastSynced = true;
@@ -494,21 +505,13 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#fdfbf7] font-mono">
       {/* Header */}
-      <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 font-serif uppercase tracking-wide">쿠팡 데이터 수집</h1>
-          <p className="text-sm text-gray-600 tracking-wider">{account.alias} ({account.provider})</p>
-        </div>
-        <div className="flex gap-3">
-          {!isCollecting ? (
-            <button
-              onClick={startCollection}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#2a9d8f] text-white border-2 border-gray-800 hover:bg-[#264653] transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
-            >
-              <Play className="w-4 h-4" />
-              수집 시작
-            </button>
-          ) : (
+      <div className="h-auto border-b-2 border-gray-800 bg-[#f6f1e9] px-6 py-4 flex-shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 font-serif uppercase tracking-wide">쿠팡 데이터 수집</h1>
+            <p className="text-sm text-gray-600 tracking-wider">{account.alias} ({account.provider})</p>
+          </div>
+          {isCollecting && (
             <button
               onClick={stopCollection}
               className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#e76f51] text-white border-2 border-gray-800 hover:bg-[#e63946] transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
@@ -518,10 +521,41 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
             </button>
           )}
         </div>
+        
+        {/* 수집 모드 선택 */}
+        {!isCollecting && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => startCollection("incremental")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider bg-[#2a9d8f] text-white border-2 border-gray-800 hover:bg-[#264653] transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
+            >
+              <FastForward className="w-4 h-4" />
+              새 내역만 수집
+              <span className="text-[10px] opacity-75 normal-case">(마지막 이후부터)</span>
+            </button>
+            <button
+              onClick={() => startCollection("full")}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider bg-[#264653] text-white border-2 border-gray-800 hover:bg-[#1d3557] transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.4)]"
+            >
+              <RefreshCw className="w-4 h-4" />
+              처음부터 수집
+              <span className="text-[10px] opacity-75 normal-case">(전체 재수집)</span>
+            </button>
+          </div>
+        )}
+        
+        {isCollecting && (
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>
+              {collectionMode === "incremental" ? "새 내역 수집 중..." : "전체 수집 중..."}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Dashboard */}
-      <div className="p-6 grid grid-cols-4 gap-4">
+      <div className="p-6 grid grid-cols-5 gap-4">
         <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
           <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">총 처리</div>
           <div className="text-2xl font-bold text-gray-900 font-mono mt-1">{progress.current} / {progress.total > 0 ? progress.total : '-'}</div>
@@ -537,6 +571,12 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
         <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
           <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">현재 페이지</div>
           <div className="text-2xl font-bold text-[#264653] font-mono mt-1">{currentPage || '-'}</div>
+        </div>
+        <div className="bg-[#fffef0] p-4 border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
+          <div className="text-xs text-gray-600 uppercase tracking-wider font-bold">수집 모드</div>
+          <div className="text-sm font-bold text-[#264653] mt-1">
+            {collectionMode === "incremental" ? "증분 수집" : "전체 수집"}
+          </div>
         </div>
       </div>
 
@@ -600,4 +640,3 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
     </div>
   );
 };
-

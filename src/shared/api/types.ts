@@ -106,3 +106,20 @@ export type CoupangPaymentListItem = {
   items: CoupangPaymentItem[];
 };
 
+export type SearchResultItem = {
+  id: number;
+  provider: string;
+  productName: string;
+  imageUrl?: string | null;
+  merchantName: string;
+  paidAt: string;
+  quantity: number;
+  unitPrice?: number | null;
+  lineAmount?: number | null;
+};
+
+export type SearchResponse = {
+  items: SearchResultItem[];
+  total: number;
+};
+

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { HomePage } from "@pages/home";
 import { PlaygroundPage } from "@pages/playground";
 import { SettingsPage } from "@pages/settings";
@@ -15,7 +15,9 @@ import { TableManagerPage } from "@pages/table-manager";
 import { TransactionListPage } from "@pages/transactions";
 import { ExpenditureDashboardPage, ExpenditureOverviewPage } from "@pages/expenditure";
 import { TransactionHeatmapPage } from "@pages/heatmap";
+import { SearchResultsPage } from "@pages/search";
 import { Sidebar } from "@widgets/sidebar";
+import { GlobalSearchBox } from "@widgets/search";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import { invoke } from "@tauri-apps/api/core";
@@ -53,6 +55,10 @@ function App() {
   const [dbLoading, setDbLoading] = useState(true);
   const [hasUsers, setHasUsers] = useState<boolean | null>(null);
   const [usersLoading, setUsersLoading] = useState(false);
+  
+  // 검색 상태
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const previousPageRef = useRef<string>("home");
 
   const refreshDbStatus = useCallback(async () => {
     setDbLoading(true);
@@ -147,6 +153,16 @@ function App() {
     }
   }, []);
 
+  // 검색 핸들러
+  const handleSearch = useCallback((query: string) => {
+    previousPageRef.current = activePage;
+    setSearchQuery(query);
+  }, [activePage]);
+
+  const handleSearchClose = useCallback(() => {
+    setSearchQuery(null);
+  }, []);
+
   const selectedAccount = accounts.find((acc) => acc.id === selectedAccountId);
 
   if (dbLoading) {
@@ -220,67 +236,92 @@ function App() {
     );
   }
 
+  // 검색 모드 여부
+  const isSearchMode = searchQuery !== null;
+
   // 계정이 있으면 메인 앱 표시
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <div className="app-shell bg-[#fffef0]">
-        <Sidebar
-          activePage={activePage}
-          selectedAccountId={selectedAccountId}
-          accounts={accounts}
-          accountsLoading={usersLoading}
-          onNavigate={handleNavigate}
-          onSelectAccount={handleSelectAccount}
-        />
+        {/* 검색 모드가 아닐 때만 사이드바 표시 */}
+        {!isSearchMode && (
+          <Sidebar
+            activePage={activePage}
+            selectedAccountId={selectedAccountId}
+            accounts={accounts}
+            accountsLoading={usersLoading}
+            onNavigate={handleNavigate}
+            onSelectAccount={handleSelectAccount}
+          />
+        )}
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#f8f6f1]">
-          {/* 메인 영역 타이틀바 드래그 영역 */}
-          <div className="titlebar-drag-region h-12 flex-shrink-0 bg-[#f8f6f1] border-b border-[#2d2416]/5" data-tauri-drag-region />
-          {activePage === "home" && <HomePage />}
-          {activePage === "playground" && <PlaygroundPage />}
-          {activePage === "settings" && <SettingsPage />}
-          {activePage === "accounts" && (
-            <AccountManagementPage 
-              onAddAccount={() => handleNavigate("account-add")} 
-              onAccountsChange={loadAccounts}
-            />
-          )}
-          {activePage === "system" && <SystemSettingsPage />}
-          {activePage === "table-manager" && <TableManagerPage />}
-          {activePage.startsWith("transactions-") && selectedAccount && (
-            <TransactionListPage account={selectedAccount} />
-          )}
-          {activePage.startsWith("expenditure-overview-") && selectedAccount && (
-            <ExpenditureOverviewPage account={selectedAccount} />
-          )}
-          {activePage.startsWith("expenditure-") && !activePage.startsWith("expenditure-overview-") && selectedAccount && (
-            <ExpenditureDashboardPage account={selectedAccount} />
-          )}
-          {activePage === "data-collection-test" && selectedAccount && (
-            selectedAccount.provider === "naver" ? (
-              <NaverExperimentalCollector account={selectedAccount} />
-            ) : selectedAccount.provider === "coupang" ? (
-              <CoupangExperimentalCollector account={selectedAccount} />
-            ) : (
-              <div className="p-6 text-sm text-gray-500">현재 계정 도메인은 실험용 수집기를 지원하지 않습니다.</div>
-            )
-          )}
-          {activePage.startsWith("data-collection-") && activePage !== "data-collection-test" && selectedAccount && (
-            selectedAccount.provider === "naver" ? (
-              <NaverTransactionCollector account={selectedAccount} />
-            ) : (
-              <div className="p-6 text-sm text-gray-500">선택한 계정에서는 거래 내역 수집 기능을 사용할 수 없습니다.</div>
-            )
-          )}
-          {activePage.startsWith("coupang-transactions-") && selectedAccount && (
-            selectedAccount.provider === "coupang" ? (
-              <CoupangTransactionCollector account={selectedAccount} />
-            ) : (
-              <div className="p-6 text-sm text-gray-500">선택한 계정에서는 쿠팡 거래 내역을 수집할 수 없습니다.</div>
-            )
-          )}
-          {activePage.startsWith("heatmap-") && selectedAccount && (
-            <TransactionHeatmapPage account={selectedAccount} />
+          {/* 메인 영역 타이틀바 드래그 영역 + 검색창 */}
+          <div 
+            className={`titlebar-drag-region h-12 flex-shrink-0 bg-[#f8f6f1] border-b border-[#2d2416]/5 flex items-center px-4 ${
+              isSearchMode ? "justify-between" : "justify-center"
+            }`}
+            data-tauri-drag-region
+          >
+            {/* 검색 모드일 때 좌측 여백 확보 (macOS 창 버튼 영역) */}
+            {isSearchMode && <div className="w-20 flex-shrink-0" />}
+            <GlobalSearchBox onSearch={handleSearch} placeholder="상품 검색... (⌘K)" />
+            {/* 검색 모드일 때 우측 여백 (대칭을 위해) */}
+            {isSearchMode && <div className="w-20 flex-shrink-0" />}
+          </div>
+          
+          {/* 검색 결과 페이지 */}
+          {isSearchMode ? (
+            <SearchResultsPage query={searchQuery} onClose={handleSearchClose} />
+          ) : (
+            <>
+              {activePage === "home" && <HomePage />}
+              {activePage === "playground" && <PlaygroundPage />}
+              {activePage === "settings" && <SettingsPage />}
+              {activePage === "accounts" && (
+                <AccountManagementPage 
+                  onAddAccount={() => handleNavigate("account-add")} 
+                  onAccountsChange={loadAccounts}
+                />
+              )}
+              {activePage === "system" && <SystemSettingsPage />}
+              {activePage === "table-manager" && <TableManagerPage />}
+              {activePage.startsWith("transactions-") && selectedAccount && (
+                <TransactionListPage account={selectedAccount} />
+              )}
+              {activePage.startsWith("expenditure-overview-") && selectedAccount && (
+                <ExpenditureOverviewPage account={selectedAccount} />
+              )}
+              {activePage.startsWith("expenditure-") && !activePage.startsWith("expenditure-overview-") && selectedAccount && (
+                <ExpenditureDashboardPage account={selectedAccount} />
+              )}
+              {activePage === "data-collection-test" && selectedAccount && (
+                selectedAccount.provider === "naver" ? (
+                  <NaverExperimentalCollector account={selectedAccount} />
+                ) : selectedAccount.provider === "coupang" ? (
+                  <CoupangExperimentalCollector account={selectedAccount} />
+                ) : (
+                  <div className="p-6 text-sm text-gray-500">현재 계정 도메인은 실험용 수집기를 지원하지 않습니다.</div>
+                )
+              )}
+              {activePage.startsWith("data-collection-") && activePage !== "data-collection-test" && selectedAccount && (
+                selectedAccount.provider === "naver" ? (
+                  <NaverTransactionCollector account={selectedAccount} />
+                ) : (
+                  <div className="p-6 text-sm text-gray-500">선택한 계정에서는 거래 내역 수집 기능을 사용할 수 없습니다.</div>
+                )
+              )}
+              {activePage.startsWith("coupang-transactions-") && selectedAccount && (
+                selectedAccount.provider === "coupang" ? (
+                  <CoupangTransactionCollector account={selectedAccount} />
+                ) : (
+                  <div className="p-6 text-sm text-gray-500">선택한 계정에서는 쿠팡 거래 내역을 수집할 수 없습니다.</div>
+                )
+              )}
+              {activePage.startsWith("heatmap-") && selectedAccount && (
+                <TransactionHeatmapPage account={selectedAccount} />
+              )}
+            </>
           )}
         </main>
       </div>

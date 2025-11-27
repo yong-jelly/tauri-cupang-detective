@@ -249,8 +249,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
               <span className="font-bold uppercase tracking-wider text-sm">일 평균 지출</span>
             </div>
             <div className="text-3xl font-bold text-gray-900 font-mono">
-              ₩
-              {(stats.totalAmount / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()).toFixed(0).toLocaleString().split('.')[0]}
+              ₩{Math.round(stats.totalAmount / new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0).getDate()).toLocaleString()}
             </div>
             <div className="mt-2 text-sm text-gray-500 border-t border-dashed border-gray-400 pt-2">
               {selectedDate.getMonth() + 1}월 기준
