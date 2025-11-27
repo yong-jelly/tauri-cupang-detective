@@ -5,13 +5,15 @@ import { useAccounts } from "@features/accounts/shared/hooks/useAccounts";
 import { useAccountTest } from "@features/accounts/shared/hooks/useAccountTest";
 import { AccountCard } from "@features/accounts/ui/AccountCard";
 import { AccountTestModal } from "@features/accounts/ui/AccountTestModal";
+import { AccountDetailModal } from "@features/accounts/ui/AccountDetailModal";
 
 interface AccountManagementPageProps {
   onAddAccount: () => void;
+  onAccountsChange?: () => void;
 }
 
-export const AccountManagementPage = ({ onAddAccount }: AccountManagementPageProps) => {
-  const { accounts, loading, error, loadAccounts, deleteAccount } = useAccounts();
+export const AccountManagementPage = ({ onAddAccount, onAccountsChange }: AccountManagementPageProps) => {
+  const { accounts, loading, error, loadAccounts, deleteAccount, updateAccount } = useAccounts();
   const {
     testLoading,
     testResponse,
@@ -26,6 +28,9 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
   const [testModalOpen, setTestModalOpen] = useState(false);
   const [testAccount, setTestAccount] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<"request" | "response">("request");
+  
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailAccount, setDetailAccount] = useState<User | null>(null);
 
   useEffect(() => {
     loadAccounts();
@@ -33,7 +38,10 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
 
   const handleDelete = async (id: string) => {
     if (window.confirm("정말로 이 계정을 삭제하시겠습니까?")) {
-    await deleteAccount(id);
+      const success = await deleteAccount(id);
+      if (success) {
+        onAccountsChange?.();
+      }
     }
   };
 
@@ -54,6 +62,25 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
     if (testAccount) {
       runTest(testAccount);
     }
+  };
+
+  const handleDetail = (account: User) => {
+    setDetailAccount(account);
+    setDetailModalOpen(true);
+  };
+
+  const handleDetailClose = () => {
+    setDetailModalOpen(false);
+    setDetailAccount(null);
+  };
+
+  const handleUpdateAccount = async (id: string, alias: string) => {
+    const updatedUser = await updateAccount(id, alias);
+    if (updatedUser) {
+      setDetailAccount(updatedUser);
+      onAccountsChange?.();
+    }
+    return updatedUser;
   };
 
   useEffect(() => {
@@ -120,6 +147,7 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
                 account={account}
                 onDelete={handleDelete}
                 onTest={handleTest}
+                onDetail={handleDetail}
               />
             ))}
           </div>
@@ -143,6 +171,16 @@ export const AccountManagementPage = ({ onAddAccount }: AccountManagementPagePro
             await updateCredentials(testAccount, curl);
           }}
           onTabChange={setActiveTab}
+        />
+      )}
+
+      {/* Detail Modal */}
+      {detailAccount && (
+        <AccountDetailModal
+          account={detailAccount}
+          isOpen={detailModalOpen}
+          onClose={handleDetailClose}
+          onUpdate={handleUpdateAccount}
         />
       )}
     </div>

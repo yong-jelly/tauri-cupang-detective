@@ -852,6 +852,46 @@ fn delete_user(
 }
 
 #[tauri::command]
+fn update_user(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    id: String,
+    alias: String,
+) -> Result<User, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let now = Utc::now().to_rfc3339();
+    
+    conn.execute(
+        "UPDATE tbl_user SET alias = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![alias, now, id],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    // 업데이트된 사용자 정보 반환
+    let user = conn.query_row(
+        "SELECT id, provider, alias, curl, created_at, updated_at FROM tbl_user WHERE id = ?1",
+        [&id],
+        |row| {
+            Ok(User {
+                id: row.get(0)?,
+                provider: row.get(1)?,
+                alias: row.get(2)?,
+                curl: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        },
+    ).map_err(|e| e.to_string())?;
+    
+    Ok(user)
+}
+
+#[tauri::command]
 fn get_user_credentials(
     app_handle: AppHandle,
     state: State<AppState>,
@@ -1590,6 +1630,7 @@ pub fn run() {
             list_users,
             save_account,
             delete_user,
+            update_user,
             get_user_credentials,
             update_account_credentials,
             save_naver_payment,

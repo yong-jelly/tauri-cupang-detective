@@ -33,12 +33,24 @@ export const useAccounts = () => {
     }
   }, [loadAccounts]);
 
+  const updateAccount = useCallback(async (id: string, alias: string): Promise<User | null> => {
+    try {
+      const updatedUser = await invoke<User>("update_user", { id, alias });
+      await loadAccounts();
+      return updatedUser;
+    } catch (err) {
+      console.error("계정 수정 실패:", err);
+      throw new Error("계정 수정에 실패했습니다.");
+    }
+  }, [loadAccounts]);
+
   return {
     accounts,
     loading,
     error,
     loadAccounts,
     deleteAccount,
+    updateAccount,
   };
 };
 

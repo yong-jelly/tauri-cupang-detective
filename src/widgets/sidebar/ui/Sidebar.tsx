@@ -16,6 +16,7 @@ import {
   Wrench,
   BarChart3,
   Zap,
+  Grid3X3,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -24,6 +25,8 @@ import { Loader2 } from "lucide-react";
 interface SidebarProps {
   activePage?: string;
   selectedAccountId?: string | null;
+  accounts?: User[];
+  accountsLoading?: boolean;
   onNavigate?: (page: string) => void;
   onSelectAccount?: (accountId: string | null) => void;
 }
@@ -31,11 +34,13 @@ interface SidebarProps {
 export const Sidebar = ({
   activePage = "home",
   selectedAccountId,
+  accounts: externalAccounts,
+  accountsLoading: externalLoading,
   onNavigate,
   onSelectAccount,
 }: SidebarProps) => {
-  const [accounts, setAccounts] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [internalAccounts, setInternalAccounts] = useState<User[]>([]);
+  const [internalLoading, setInternalLoading] = useState(true);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     expenditure: true,
@@ -44,21 +49,30 @@ export const Sidebar = ({
   });
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // 외부에서 accounts가 전달되면 사용, 아니면 내부에서 로드
+  const accounts = externalAccounts ?? internalAccounts;
+  const loading = externalAccounts !== undefined ? (externalLoading ?? false) : internalLoading;
+
   useEffect(() => {
+    // 외부에서 accounts가 전달되면 내부 로드 스킵
+    if (externalAccounts !== undefined) {
+      return;
+    }
+    
     const loadAccounts = async () => {
-      setLoading(true);
+      setInternalLoading(true);
       try {
         const result = await invoke<UserListResponse>("list_users");
-        setAccounts(result.users);
+        setInternalAccounts(result.users);
       } catch (err) {
         console.error("계정 목록 로드 실패:", err);
-        setAccounts([]);
+        setInternalAccounts([]);
       } finally {
-        setLoading(false);
+        setInternalLoading(false);
       }
     };
     loadAccounts();
-  }, []);
+  }, [externalAccounts]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -219,6 +233,13 @@ export const Sidebar = ({
                 >
                   <Receipt className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-1 text-left">거래 목록</span>
+                </button>
+                <button
+                  onClick={() => onNavigate?.(`heatmap-${selectedAccount.id}`)}
+                  className={menuItemClass(activePage === `heatmap-${selectedAccount.id}`)}
+                >
+                  <Grid3X3 className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left">거래 히트맵</span>
                 </button>
               </div>
             )}

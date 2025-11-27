@@ -14,6 +14,7 @@ import { AccountManagementPage } from "@pages/accounts";
 import { TableManagerPage } from "@pages/table-manager";
 import { TransactionListPage } from "@pages/transactions";
 import { ExpenditureDashboardPage, ExpenditureOverviewPage } from "@pages/expenditure";
+import { TransactionHeatmapPage } from "@pages/heatmap";
 import { Sidebar } from "@widgets/sidebar";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -114,7 +115,7 @@ function App() {
     if (accounts.length > 0 && !selectedAccountId) {
       const firstAccount = accounts[0];
       setSelectedAccountId(firstAccount.id);
-      setActivePage("data-collection-test");
+      setActivePage(`expenditure-overview-${firstAccount.id}`);
     }
   }, [accounts, selectedAccountId]);
 
@@ -141,8 +142,8 @@ function App() {
   const handleSelectAccount = useCallback((accountId: string | null) => {
     setSelectedAccountId(accountId);
     if (accountId) {
-      // 계정 선택 시 실험용 수집기 페이지로 이동
-      setActivePage("data-collection-test");
+      // 계정 선택 시 종합 대시보드로 이동
+      setActivePage(`expenditure-overview-${accountId}`);
     }
   }, []);
 
@@ -227,6 +228,8 @@ function App() {
         <Sidebar
           activePage={activePage}
           selectedAccountId={selectedAccountId}
+          accounts={accounts}
+          accountsLoading={usersLoading}
           onNavigate={handleNavigate}
           onSelectAccount={handleSelectAccount}
         />
@@ -237,7 +240,10 @@ function App() {
           {activePage === "playground" && <PlaygroundPage />}
           {activePage === "settings" && <SettingsPage />}
           {activePage === "accounts" && (
-            <AccountManagementPage onAddAccount={() => handleNavigate("account-add")} />
+            <AccountManagementPage 
+              onAddAccount={() => handleNavigate("account-add")} 
+              onAccountsChange={loadAccounts}
+            />
           )}
           {activePage === "system" && <SystemSettingsPage />}
           {activePage === "table-manager" && <TableManagerPage />}
@@ -272,6 +278,9 @@ function App() {
             ) : (
               <div className="p-6 text-sm text-gray-500">선택한 계정에서는 쿠팡 거래 내역을 수집할 수 없습니다.</div>
             )
+          )}
+          {activePage.startsWith("heatmap-") && selectedAccount && (
+            <TransactionHeatmapPage account={selectedAccount} />
           )}
         </main>
       </div>
