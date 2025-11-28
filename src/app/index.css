@@ -206,6 +206,20 @@ html, body, #root {
     border-bottom: none;
 }
 
+/* ===== 공통 애니메이션 ===== */
+
+/* 기본 Fade in 애니메이션 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* ===== 검색 팝업 애니메이션 ===== */
 
 /* Fade in 애니메이션 */

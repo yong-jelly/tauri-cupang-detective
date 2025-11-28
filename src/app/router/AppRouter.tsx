@@ -31,6 +31,7 @@ import { TransactionListPage } from "@pages/transactions";
 import { ExpenditureDashboardPage, ExpenditureOverviewPage } from "@pages/expenditure";
 import { TransactionHeatmapPage } from "@pages/heatmap";
 import { SearchResultsPage } from "@pages/search";
+import { LedgerPage, LedgerEntryPage } from "@pages/ledger";
 
 import type { DbStatus, HasUsersResponse, User, UserListResponse } from "@shared/api/types";
 
@@ -386,6 +387,22 @@ const RouterContent = () => {
             element={
               <AccountPage accounts={accounts}>
                 {(account) => <TransactionHeatmapPage account={account} />}
+              </AccountPage>
+            } 
+          />
+          <Route 
+            path="ledger" 
+            element={
+              <AccountPage accounts={accounts}>
+                {(account) => <LedgerPage account={account} />}
+              </AccountPage>
+            } 
+          />
+          <Route 
+            path="ledger/entry" 
+            element={
+              <AccountPage accounts={accounts}>
+                {(account) => <LedgerEntryPage account={account} />}
               </AccountPage>
             } 
           />

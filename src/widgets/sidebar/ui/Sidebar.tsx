@@ -18,6 +18,8 @@ import {
   BarChart3,
   Zap,
   Grid3X3,
+  BookOpen,
+  PenLine,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -47,6 +49,7 @@ export const Sidebar = ({
   const [internalLoading, setInternalLoading] = useState(true);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    ledger: true,
     expenditure: true,
     data: true,
     tools: true,
@@ -77,6 +80,8 @@ export const Sidebar = ({
       if (subPath === "expenditure") return `expenditure-${accountId}`;
       if (subPath === "transactions") return `transactions-${accountId}`;
       if (subPath === "heatmap") return `heatmap-${accountId}`;
+      if (subPath === "ledger") return `ledger-${accountId}`;
+      if (subPath === "ledger/entry") return `ledger-entry-${accountId}`;
       if (subPath === "data-collection") return `data-collection-${accountId}`;
       if (subPath === "data-collection/experimental") return "data-collection-test";
       if (subPath === "coupang-transactions") return `coupang-transactions-${accountId}`;
@@ -201,6 +206,18 @@ export const Sidebar = ({
     const heatmapMatch = page.match(/^heatmap-(.+)$/);
     if (heatmapMatch) {
       navigate(`/account/${heatmapMatch[1]}/heatmap`);
+      return;
+    }
+    
+    const ledgerEntryMatch = page.match(/^ledger-entry-(.+)$/);
+    if (ledgerEntryMatch) {
+      navigate(`/account/${ledgerEntryMatch[1]}/ledger/entry`);
+      return;
+    }
+    
+    const ledgerMatch = page.match(/^ledger-(.+)$/);
+    if (ledgerMatch) {
+      navigate(`/account/${ledgerMatch[1]}/ledger`);
       return;
     }
     
@@ -357,6 +374,38 @@ export const Sidebar = ({
                 >
                   <Grid3X3 className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-1 text-left">거래 히트맵</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 가계부 섹션 */}
+        {selectedAccount && (
+          <div className="mt-2">
+            <div className={sectionHeaderClass} onClick={() => toggleSection("ledger")}>
+              <span className="flex items-center gap-2">
+                <BookOpen className="w-3.5 h-3.5" />
+                가계부
+              </span>
+              <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${expandedSections.ledger ? "rotate-90" : ""}`} />
+            </div>
+            
+            {expandedSections.ledger && (
+              <div className="py-1">
+                <button
+                  onClick={() => handleNavigation(`ledger-${selectedAccount.id}`)}
+                  className={menuItemClass(activePage === `ledger-${selectedAccount.id}`)}
+                >
+                  <Receipt className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left">가계부</span>
+                </button>
+                <button
+                  onClick={() => handleNavigation(`ledger-entry-${selectedAccount.id}`)}
+                  className={menuItemClass(activePage === `ledger-entry-${selectedAccount.id}`)}
+                >
+                  <PenLine className="w-4 h-4 flex-shrink-0" />
+                  <span className="flex-1 text-left">수기 입력</span>
                 </button>
               </div>
             )}
