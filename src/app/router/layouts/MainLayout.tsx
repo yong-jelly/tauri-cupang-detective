@@ -155,7 +155,7 @@ export const MainLayout = ({
         >
           {/* 검색 모드일 때 좌측 여백 확보 (macOS 창 버튼 영역) */}
           {isSearchMode && <div className="w-20 flex-shrink-0" />}
-          <GlobalSearchBox onSearch={handleSearch} placeholder="상품 검색... (⌘K)" />
+          <GlobalSearchBox onSearch={handleSearch} placeholder="검색..." />
           {/* 검색 모드일 때 우측 여백 (대칭을 위해) */}
           {isSearchMode && <div className="w-20 flex-shrink-0" />}
         </div>

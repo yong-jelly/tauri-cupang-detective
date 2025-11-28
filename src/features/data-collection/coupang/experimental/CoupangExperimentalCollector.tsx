@@ -58,7 +58,7 @@ export const CoupangExperimentalCollector = ({ account }: CoupangExperimentalCol
   const [detailBuildId, setDetailBuildId] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
 
-  const { getHeaders, loading: credentialsLoading, error: credentialsError } = useAccountCredentials(account);
+  const { getHeaders } = useAccountCredentials(account);
   const resolveBuildId = useBuildId(getHeaders);
 
   const fetchList = useCallback(async () => {

@@ -323,7 +323,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={stats.merchantStats}
+                      data={stats.merchantStats as any[]}
                       cx="50%"
                       cy="50%"
                       innerRadius={40}

@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { GlobalSearchBox } from "./GlobalSearchBox";
-import { action } from "@storybook/addon-actions";
 import { useEffect } from "react";
+
+// storybook action 대체 함수
+const actionFn = () => () => {};
 
 const meta: Meta<typeof GlobalSearchBox> = {
   title: "Widgets/Search/GlobalSearchBox",
@@ -78,7 +80,7 @@ type Story = StoryObj<typeof meta>;
  */
 export const Default: Story = {
   args: {
-    onSearch: action("onSearch"),
+    onSearch: actionFn(),
     placeholder: "상품 검색... (⌘K)",
   },
 };
@@ -88,7 +90,7 @@ export const Default: Story = {
  */
 export const CustomPlaceholder: Story = {
   args: {
-    onSearch: action("onSearch"),
+    onSearch: actionFn(),
     placeholder: "거래 내역 검색...",
   },
 };
@@ -101,7 +103,7 @@ export const CustomPlaceholder: Story = {
  */
 export const WithHistory: Story = {
   args: {
-    onSearch: action("onSearch"),
+    onSearch: actionFn(),
     placeholder: "상품 검색...",
     storageKey: "storybook_search_history",
   },
@@ -135,7 +137,7 @@ export const WithHistory: Story = {
  */
 export const InTitlebar: Story = {
   args: {
-    onSearch: action("onSearch"),
+    onSearch: actionFn(),
     placeholder: "상품 검색... (⌘K)",
   },
   decorators: [
@@ -157,7 +159,7 @@ export const InTitlebar: Story = {
  */
 export const OnDarkBackground: Story = {
   args: {
-    onSearch: action("onSearch"),
+    onSearch: actionFn(),
     placeholder: "검색어를 입력하세요",
   },
   decorators: [
@@ -174,7 +176,7 @@ export const OnDarkBackground: Story = {
  */
 export const NarrowWidth: Story = {
   args: {
-    onSearch: action("onSearch"),
+    onSearch: actionFn(),
     placeholder: "검색...",
   },
   decorators: [

@@ -79,7 +79,7 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
     }
     setSaving(true);
     try {
-      const { url, method, headers } = parseCurlCommand(curl);
+      const { url, headers } = parseCurlCommand(curl);
       if (!url) {
         throw new Error("cURL 파싱 실패");
       }
@@ -123,7 +123,7 @@ export const AccountOnboardingPage = ({ onComplete, showCloseButton = false, onC
           <>
             <div className="inline-flex items-center gap-2 text-sm font-bold uppercase text-[#2d2416] bg-[#e8dcc8] border-2 border-[#2d2416] px-4 py-2 shadow-[3px_3px_0px_0px_rgba(196,154,26,1)]">
               <Sparkles className="w-4 h-4 text-[#c49a1a]" />
-              지출 탐정 · 첫 계정 등록
+              지출 탐정 · 계정 등록
             </div>
             <h2 className="text-4xl font-black text-[#2d2416] tracking-tight uppercase">어느 플랫폼부터 시작할까요?</h2>
             <p className="text-lg text-[#5c4d3c] tracking-wide">

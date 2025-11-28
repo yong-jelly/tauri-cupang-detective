@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { SearchResultsView } from "./SearchResultsView";
-import { action } from "@storybook/addon-actions";
 import type { SearchResultItem } from "@shared/api/types";
+
+// storybook action 대체 함수
+const actionFn = () => () => {};
 
 // Mock 데이터
 const mockResults: SearchResultItem[] = [
@@ -150,7 +152,7 @@ export const Default: Story = {
     total: mockResults.length,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -164,7 +166,7 @@ export const Loading: Story = {
     total: 0,
     loading: true,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -178,7 +180,7 @@ export const Error: Story = {
     total: 0,
     loading: false,
     error: "검색 중 오류가 발생했습니다. 네트워크 연결을 확인해 주세요.",
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -192,7 +194,7 @@ export const NoResults: Story = {
     total: 0,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -206,7 +208,7 @@ export const NaverOnly: Story = {
     total: 3,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -220,7 +222,7 @@ export const CoupangOnly: Story = {
     total: 3,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -234,7 +236,7 @@ export const WithoutImages: Story = {
     total: mockResults.length,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -252,7 +254,7 @@ export const ManyResults: Story = {
     total: 50,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 
@@ -266,7 +268,7 @@ export const SingleResult: Story = {
     total: 1,
     loading: false,
     error: null,
-    onClose: action("onClose"),
+    onClose: actionFn(),
   },
 };
 

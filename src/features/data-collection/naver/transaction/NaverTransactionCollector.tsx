@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { buildListUrl, buildDetailUrl } from "@shared/config/providerUrls";
 import type { User, ProxyResponse } from "@shared/api/types";
-import { Loader2, Play, Pause, CheckCircle, AlertCircle, Clock, RefreshCw, FastForward } from "lucide-react";
+import { Loader2, Pause, CheckCircle, AlertCircle, Clock, RefreshCw, FastForward } from "lucide-react";
 import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
 import { useBuildId } from "@features/data-collection/shared/hooks/useBuildId";
 
@@ -121,7 +121,7 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
     ]);
   };
 
-  const { getHeaders, loading: credentialsLoading, error: credentialsError } = useAccountCredentials(account);
+  const { getHeaders } = useAccountCredentials(account);
   const resolveBuildId = useBuildId(getHeaders);
 
   // 딜레이 함수

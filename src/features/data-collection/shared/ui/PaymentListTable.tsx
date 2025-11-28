@@ -7,11 +7,6 @@ interface PaymentListTableProps {
   loading?: boolean;
 }
 
-interface ExpandedMonth {
-  yearMonth: string;
-  expanded: boolean;
-}
-
 export const PaymentListTable = ({ payments, loading }: PaymentListTableProps) => {
   const [expandedPayments, setExpandedPayments] = useState<Set<number>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());

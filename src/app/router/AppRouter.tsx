@@ -293,6 +293,24 @@ const RouterContent = () => {
 
   return (
     <Routes>
+      {/* 전체 화면 라우트 (MainLayout 외부) */}
+      <Route 
+        path="accounts/add" 
+        element={
+          <div className="min-h-screen flex flex-col bg-[#fffef0]">
+            <div className="titlebar-drag-region h-12 flex-shrink-0" data-tauri-drag-region />
+            <AccountOnboardingPage 
+              showCloseButton={true}
+              onClose={() => window.history.back()}
+              onComplete={() => {
+                loadAccounts();
+                window.history.back();
+              }} 
+            />
+          </div>
+        } 
+      />
+      
       {/* 메인 레이아웃 */}
       <Route
         element={
@@ -304,8 +322,17 @@ const RouterContent = () => {
           />
         }
       >
-        {/* 홈 */}
-        <Route index element={<HomePage />} />
+        {/* 홈 - 데이터가 있으면 첫 번째 계정의 종합 대시보드로 리다이렉트 */}
+        <Route 
+          index 
+          element={
+            selectedAccountId ? (
+              <Navigate to={`/account/${selectedAccountId}/overview`} replace />
+            ) : (
+              <HomePage />
+            )
+          } 
+        />
         <Route path="home" element={<HomePage />} />
         
         {/* 도구 */}
@@ -319,21 +346,7 @@ const RouterContent = () => {
           path="accounts" 
           element={
             <AccountManagementPage 
-              onAddAccount={() => {}} 
               onAccountsChange={loadAccounts}
-            />
-          } 
-        />
-        <Route 
-          path="accounts/add" 
-          element={
-            <AccountOnboardingPage 
-              showCloseButton={true}
-              onClose={() => window.history.back()}
-              onComplete={() => {
-                loadAccounts();
-                window.history.back();
-              }} 
             />
           } 
         />

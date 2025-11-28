@@ -83,7 +83,7 @@ const HeroLayout = ({
 
 export const SystemSettingsPage = ({ onReady }: Props) => {
   const [status, setStatus] = useState<DbStatus | null>(null);
-  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
+  const [lastBackupAt] = useState<string | null>(null);
   const [previewTable, setPreviewTable] = useState(TABLE_OPTIONS[0]);
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState<"init" | "load" | null>(null);

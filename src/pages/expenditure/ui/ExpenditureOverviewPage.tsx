@@ -646,7 +646,7 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
               <div className="w-full h-full flex-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={stats.merchantStats} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="amount">
+                    <Pie data={stats.merchantStats as any[]} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={2} dataKey="amount">
                       {stats.merchantStats.map((_, index) => (
                         <Cell key={`cell-${index}`} fill={RETRO_COLORS[index % RETRO_COLORS.length]} stroke="#fffef0" strokeWidth={2} />
                       ))}
