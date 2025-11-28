@@ -471,7 +471,6 @@ export const getQuarterlyTopExpenses = (
   
   Object.entries(quarterlyGroups)
     .sort((a, b) => b[0].localeCompare(a[0])) // 최신 분기 먼저
-    .slice(0, 4) // 최근 4분기만
     .forEach(([key, items]) => {
       const year = parseInt(key.slice(0, 4));
       const quarterNum = parseInt(key.slice(-1));

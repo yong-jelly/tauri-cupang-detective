@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Loader2, Users } from "lucide-react";
 import type { User } from "@shared/api/types";
 import { useAccounts } from "@features/accounts/shared/hooks/useAccounts";
@@ -8,11 +9,20 @@ import { AccountTestModal } from "@features/accounts/ui/AccountTestModal";
 import { AccountDetailModal } from "@features/accounts/ui/AccountDetailModal";
 
 interface AccountManagementPageProps {
-  onAddAccount: () => void;
+  onAddAccount?: () => void;
   onAccountsChange?: () => void;
 }
 
 export const AccountManagementPage = ({ onAddAccount, onAccountsChange }: AccountManagementPageProps) => {
+  const navigate = useNavigate();
+  
+  const handleAddAccount = () => {
+    if (onAddAccount) {
+      onAddAccount();
+    } else {
+      navigate("/accounts/add");
+    }
+  };
   const { accounts, loading, error, loadAccounts, deleteAccount, updateAccount } = useAccounts();
   const {
     testLoading,
@@ -102,7 +112,7 @@ export const AccountManagementPage = ({ onAddAccount, onAccountsChange }: Accoun
             </p>
           </div>
           <button
-            onClick={onAddAccount}
+            onClick={handleAddAccount}
             className="inline-flex items-center gap-3 px-5 py-3 bg-[#2d2416] text-[#fffef0] font-bold text-sm uppercase tracking-wider hover:bg-[#1a1610] transition-colors shadow-[4px_4px_0px_0px_rgba(196,154,26,1)]"
           >
             <Plus className="w-5 h-5" />
@@ -133,7 +143,7 @@ export const AccountManagementPage = ({ onAddAccount, onAccountsChange }: Accoun
             </div>
             <p className="text-[#5c4d3c] text-lg mb-6 tracking-wide">등록된 계정이 없습니다</p>
             <button
-              onClick={onAddAccount}
+              onClick={handleAddAccount}
               className="px-6 py-3 bg-[#2d2416] text-[#fffef0] font-bold uppercase tracking-wider hover:bg-[#1a1610] transition-colors shadow-[3px_3px_0px_0px_rgba(196,154,26,1)]"
             >
               첫 번째 계정 추가하기

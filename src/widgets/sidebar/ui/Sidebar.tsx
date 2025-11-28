@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
@@ -32,13 +33,16 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({
-  activePage = "home",
+  activePage: externalActivePage,
   selectedAccountId,
   accounts: externalAccounts,
   accountsLoading: externalLoading,
   onNavigate,
   onSelectAccount,
 }: SidebarProps) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const [internalAccounts, setInternalAccounts] = useState<User[]>([]);
   const [internalLoading, setInternalLoading] = useState(true);
   const [showAccountDropdown, setShowAccountDropdown] = useState(false);
@@ -52,6 +56,36 @@ export const Sidebar = ({
   // 외부에서 accounts가 전달되면 사용, 아니면 내부에서 로드
   const accounts = externalAccounts ?? internalAccounts;
   const loading = externalAccounts !== undefined ? (externalLoading ?? false) : internalLoading;
+
+  // 현재 경로에서 activePage 추론
+  const getActivePageFromPath = (): string => {
+    const path = location.pathname;
+    
+    if (path === "/" || path === "/home") return "home";
+    if (path === "/accounts") return "accounts";
+    if (path === "/accounts/add") return "account-add";
+    if (path === "/system") return "system";
+    if (path === "/table-manager") return "table-manager";
+    if (path === "/playground") return "playground";
+    if (path === "/settings") return "settings";
+    
+    // 계정별 페이지
+    const accountMatch = path.match(/^\/account\/([^/]+)\/(.+)$/);
+    if (accountMatch) {
+      const [, accountId, subPath] = accountMatch;
+      if (subPath === "overview") return `expenditure-overview-${accountId}`;
+      if (subPath === "expenditure") return `expenditure-${accountId}`;
+      if (subPath === "transactions") return `transactions-${accountId}`;
+      if (subPath === "heatmap") return `heatmap-${accountId}`;
+      if (subPath === "data-collection") return `data-collection-${accountId}`;
+      if (subPath === "data-collection/experimental") return "data-collection-test";
+      if (subPath === "coupang-transactions") return `coupang-transactions-${accountId}`;
+    }
+    
+    return "home";
+  };
+
+  const activePage = externalActivePage ?? getActivePageFromPath();
 
   useEffect(() => {
     // 외부에서 accounts가 전달되면 내부 로드 스킵
@@ -94,10 +128,93 @@ export const Sidebar = ({
   const handleAccountSelect = (accountId: string | null) => {
     onSelectAccount?.(accountId);
     setShowAccountDropdown(false);
+    // 계정 선택 시 해당 계정의 종합 대시보드로 이동
+    if (accountId) {
+      navigate(`/account/${accountId}/overview`);
+    }
   };
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // 네비게이션 핸들러 (기존 page 문자열을 URL로 변환)
+  const handleNavigation = (page: string) => {
+    // 외부 핸들러가 있으면 먼저 호출
+    onNavigate?.(page);
+    
+    // 라우터 네비게이션
+    if (page === "home") {
+      navigate("/");
+      return;
+    }
+    if (page === "accounts") {
+      navigate("/accounts");
+      return;
+    }
+    if (page === "account-add") {
+      navigate("/accounts/add");
+      return;
+    }
+    if (page === "system") {
+      navigate("/system");
+      return;
+    }
+    if (page === "table-manager") {
+      navigate("/table-manager");
+      return;
+    }
+    if (page === "playground") {
+      navigate("/playground");
+      return;
+    }
+    if (page === "settings") {
+      navigate("/settings");
+      return;
+    }
+    if (page === "data-collection-test") {
+      if (selectedAccountId) {
+        navigate(`/account/${selectedAccountId}/data-collection/experimental`);
+      }
+      return;
+    }
+    
+    // 계정별 페이지 패턴
+    const overviewMatch = page.match(/^expenditure-overview-(.+)$/);
+    if (overviewMatch) {
+      navigate(`/account/${overviewMatch[1]}/overview`);
+      return;
+    }
+    
+    const expenditureMatch = page.match(/^expenditure-(.+)$/);
+    if (expenditureMatch) {
+      navigate(`/account/${expenditureMatch[1]}/expenditure`);
+      return;
+    }
+    
+    const transactionsMatch = page.match(/^transactions-(.+)$/);
+    if (transactionsMatch) {
+      navigate(`/account/${transactionsMatch[1]}/transactions`);
+      return;
+    }
+    
+    const heatmapMatch = page.match(/^heatmap-(.+)$/);
+    if (heatmapMatch) {
+      navigate(`/account/${heatmapMatch[1]}/heatmap`);
+      return;
+    }
+    
+    const dataCollectionMatch = page.match(/^data-collection-(.+)$/);
+    if (dataCollectionMatch) {
+      navigate(`/account/${dataCollectionMatch[1]}/data-collection`);
+      return;
+    }
+    
+    const coupangMatch = page.match(/^coupang-transactions-(.+)$/);
+    if (coupangMatch) {
+      navigate(`/account/${coupangMatch[1]}/coupang-transactions`);
+      return;
+    }
   };
 
   // 부드러운 메뉴 아이템 스타일
@@ -213,7 +330,7 @@ export const Sidebar = ({
             {expandedSections.expenditure && (
               <div className="py-1">
                 <button
-                  onClick={() => onNavigate?.(`expenditure-overview-${selectedAccount.id}`)}
+                  onClick={() => handleNavigation(`expenditure-overview-${selectedAccount.id}`)}
                   className={menuItemClass(activePage === `expenditure-overview-${selectedAccount.id}`)}
                 >
                   <TrendingUp className="w-4 h-4 flex-shrink-0" />
@@ -221,21 +338,21 @@ export const Sidebar = ({
                   <Zap className="w-3 h-3 text-[#c49a1a]" />
                 </button>
                 <button
-                  onClick={() => onNavigate?.(`expenditure-${selectedAccount.id}`)}
+                  onClick={() => handleNavigation(`expenditure-${selectedAccount.id}`)}
                   className={menuItemClass(activePage === `expenditure-${selectedAccount.id}`)}
                 >
                   <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-1 text-left">월별 현황</span>
                 </button>
                 <button
-                  onClick={() => onNavigate?.(`transactions-${selectedAccount.id}`)}
+                  onClick={() => handleNavigation(`transactions-${selectedAccount.id}`)}
                   className={menuItemClass(activePage === `transactions-${selectedAccount.id}`)}
                 >
                   <Receipt className="w-4 h-4 flex-shrink-0" />
                   <span className="flex-1 text-left">거래 목록</span>
                 </button>
                 <button
-                  onClick={() => onNavigate?.(`heatmap-${selectedAccount.id}`)}
+                  onClick={() => handleNavigation(`heatmap-${selectedAccount.id}`)}
                   className={menuItemClass(activePage === `heatmap-${selectedAccount.id}`)}
                 >
                   <Grid3X3 className="w-4 h-4 flex-shrink-0" />
@@ -260,7 +377,7 @@ export const Sidebar = ({
             {expandedSections.data && (
               <div className="py-1">
                 <button
-                  onClick={() => onNavigate?.("data-collection-test")}
+                  onClick={() => handleNavigation("data-collection-test")}
                   className={menuItemClass(activePage === "data-collection-test")}
                 >
                   <Database className="w-4 h-4 flex-shrink-0" />
@@ -268,7 +385,7 @@ export const Sidebar = ({
                 </button>
                 {selectedAccount.provider === "naver" && (
                   <button
-                    onClick={() => onNavigate?.(`data-collection-${selectedAccount.id}`)}
+                    onClick={() => handleNavigation(`data-collection-${selectedAccount.id}`)}
                     className={menuItemClass(activePage === `data-collection-${selectedAccount.id}`)}
                   >
                     <FileText className="w-4 h-4 flex-shrink-0" />
@@ -277,7 +394,7 @@ export const Sidebar = ({
                 )}
                 {selectedAccount.provider === "coupang" && (
                   <button
-                    onClick={() => onNavigate?.(`coupang-transactions-${selectedAccount.id}`)}
+                    onClick={() => handleNavigation(`coupang-transactions-${selectedAccount.id}`)}
                     className={menuItemClass(activePage === `coupang-transactions-${selectedAccount.id}`)}
                   >
                     <FileText className="w-4 h-4 flex-shrink-0" />
@@ -302,14 +419,14 @@ export const Sidebar = ({
           {expandedSections.tools && (
             <div className="py-1">
               <button
-                onClick={() => onNavigate?.("table-manager")}
+                onClick={() => handleNavigation("table-manager")}
                 className={menuItemClass(activePage === "table-manager")}
               >
                 <Calculator className="w-4 h-4 flex-shrink-0" />
                 <span className="flex-1 text-left">테이블 관리</span>
               </button>
               <button
-                onClick={() => onNavigate?.("accounts")}
+                onClick={() => handleNavigation("accounts")}
                 className={menuItemClass(activePage === "accounts")}
               >
                 <Users className="w-4 h-4 flex-shrink-0" />
@@ -323,7 +440,7 @@ export const Sidebar = ({
       {/* 하단 메뉴 */}
       <div className="border-t border-[#2d2416]/10 bg-[#f6f1e9]/50 p-2">
         <button
-          onClick={() => onNavigate?.("system")}
+          onClick={() => handleNavigation("system")}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-[13px] ${
             activePage === "system"
               ? "bg-[#2d2416] text-[#fffef0] font-medium shadow-sm"

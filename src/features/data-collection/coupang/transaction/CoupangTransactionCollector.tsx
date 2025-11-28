@@ -339,150 +339,182 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
       const extractedBuildId = await fetchBuildId(headers);
       addLog(`Build ID 추출 완료: ${extractedBuildId}`, "success", 0);
       
-      // 2. pageIndex를 0부터 시작하여 계속 증가시키며 수집
-      //    주문 목록이 비어있을 때까지 반복 (마지막 페이지를 미리 알 필요 없음)
-      let pageIndex = 0;
+      // 2. 연도별로 수집 (현재 연도부터 과거로)
+      const currentYear = new Date().getFullYear();
       const pageSize = 5;
+      // 연속으로 데이터가 없는 연도 카운트 (3년 연속 없으면 종료)
+      const MAX_EMPTY_YEARS = 3;
+      let consecutiveEmptyYears = 0;
       
       addLog("주문 목록 수집 시작...", "info", 0);
       
       let reachedLastSynced = false;
+      let globalPageCount = 0; // 전체 페이지 카운트 (로그용)
       
-      while (!stopRequestedRef.current && !reachedLastSynced) {
-        setCurrentPage(pageIndex + 1);
-        addLog(`pageIndex=${pageIndex} 목록 조회 중...`, "info", pageIndex + 1);
+      // 연도 루프: 현재 연도부터 과거로 순회
+      yearLoop: for (let year = currentYear; year >= 2010 && !stopRequestedRef.current && !reachedLastSynced; year--) {
+        let pageIndex = 0;
+        let yearHasData = false;
         
-        // pageIndex를 URL 파라미터로 사용하여 페이지 조회
-        const listUrl = `https://mc.coupang.com/ssr/api/myorders/model/page?requestYear=0&pageIndex=${pageIndex}&size=${pageSize}`;
-        const listResult = await invoke<ProxyResponse>("proxy_request", {
-          url: listUrl,
-          method: "GET",
-          headers,
-          body: null,
-        });
+        addLog(`${year}년도 주문 수집 시작...`, "info", 0);
         
-        if (listResult.status !== 200) {
-          addLog(`pageIndex=${pageIndex} 조회 실패: HTTP ${listResult.status}`, "error", pageIndex + 1);
-          break;
-        }
-        
-        const listData = JSON.parse(listResult.body);
-        const orderList = listData.orderList || [];
-        
-        // 주문 목록이 비어있으면 더 이상 페이지가 없으므로 종료
-        if (orderList.length === 0) {
-          addLog(`주문이 없어 수집 종료 (pageIndex: ${pageIndex})`, "info", pageIndex + 1);
-          break;
-        }
-        
-        setProgress(prev => ({ ...prev, total: prev.total + orderList.length }));
-        
-        // 페이지 내 주문 순회
-        for (const orderItem of orderList) {
-          if (stopRequestedRef.current) {
-            addLog("사용자 요청으로 수집 중단", "info", pageIndex + 1);
+        // 페이지 루프: 해당 연도의 모든 페이지 순회
+        while (!stopRequestedRef.current && !reachedLastSynced) {
+          globalPageCount++;
+          setCurrentPage(globalPageCount);
+          addLog(`${year}년 pageIndex=${pageIndex} 목록 조회 중...`, "info", globalPageCount);
+          
+          // requestYear 파라미터에 실제 연도 사용
+          const listUrl = `https://mc.coupang.com/ssr/api/myorders/model/page?pageIndex=${pageIndex}&requestYear=${year}&size=${pageSize}`;
+          const listResult = await invoke<ProxyResponse>("proxy_request", {
+            url: listUrl,
+            method: "GET",
+            headers,
+            body: null,
+          });
+          
+          if (listResult.status !== 200) {
+            addLog(`${year}년 pageIndex=${pageIndex} 조회 실패: HTTP ${listResult.status}`, "error", globalPageCount);
             break;
           }
           
-          const orderId = String(orderItem.orderId);
+          const listData = JSON.parse(listResult.body);
+          const orderList = listData.orderList || [];
           
-          // 중복 체크 (증분 수집 모드)
-          if (stopAtOrderId && orderId === stopAtOrderId) {
-            addLog(`이미 저장된 주문(${orderId})을 발견하여 이후 수집을 중단합니다.`, "info", pageIndex + 1, orderId);
-            reachedLastSynced = true;
+          // 주문 목록이 비어있으면 해당 연도의 다음 페이지가 없음
+          if (orderList.length === 0) {
+            if (!yearHasData) {
+              addLog(`${year}년도에 주문이 없습니다.`, "info", globalPageCount);
+            } else {
+              addLog(`${year}년도 수집 완료 (총 ${pageIndex} 페이지)`, "success", globalPageCount);
+            }
             break;
           }
           
-          // 상세 조회
-          const detail = await fetchAndParseDetail(orderId, extractedBuildId, headers);
+          yearHasData = true;
+          setProgress(prev => ({ ...prev, total: prev.total + orderList.length }));
           
-          if (detail) {
-            // DB 저장
-            try {
-              await invoke("save_coupang_payment", {
-                userId: account.id,
-                payment: {
-                  orderId: detail.orderId,
-                  externalId: detail.externalId,
-                  statusCode: detail.statusCode,
-                  statusText: detail.statusText,
-                  statusColor: detail.statusColor,
-                  orderedAt: detail.orderedAt,
-                  paidAt: detail.paidAt,
-                  merchantName: detail.merchantName,
-                  merchantTel: detail.merchantTel,
-                  merchantUrl: detail.merchantUrl,
-                  merchantImageUrl: detail.merchantImageUrl,
-                  productName: detail.productName,
-                  productCount: detail.productCount,
-                  productDetailUrl: detail.productDetailUrl,
-                  orderDetailUrl: detail.orderDetailUrl,
-                  totalAmount: detail.totalAmount,
-                  totalOrderAmount: detail.totalOrderAmount,
-                  totalCancelAmount: detail.totalCancelAmount,
-                  discountAmount: detail.discountAmount,
-                  restAmount: detail.restAmount,
-                  mainPayType: detail.mainPayType,
-                  payRocketBalanceAmount: detail.payRocketBalanceAmount,
-                  payCardAmount: detail.payCardAmount,
-                  payCouponAmount: detail.payCouponAmount,
-                  payCoupangCashAmount: detail.payCoupangCashAmount,
-                  payRocketBankAmount: detail.payRocketBankAmount,
-                  wowInstantDiscount: detail.wowInstantDiscount,
-                  rewardCashAmount: detail.rewardCashAmount,
-                  items: detail.items.map(item => ({
-                    lineNo: item.lineNo,
-                    productId: item.productId,
-                    vendorItemId: item.vendorItemId,
-                    productName: item.productName,
-                    imageUrl: item.imageUrl,
-                    infoUrl: item.infoUrl,
-                    brandName: item.brandName,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    discountedUnitPrice: item.discountedUnitPrice,
-                    combinedUnitPrice: item.combinedUnitPrice,
-                    lineAmount: item.lineAmount,
-                    restAmount: item.restAmount,
-                    memo: item.memo,
-                  })),
-                },
-              });
-              
-              const mainItem = detail.items[0];
-              addLog(
-                `${detail.productName}`, 
-                "success", 
-                pageIndex + 1, 
-                orderId, 
-                mainItem?.imageUrl, 
-                detail.totalAmount, 
-                detail.orderedAt
-              );
-              setProgress(prev => ({ ...prev, success: prev.success + 1, current: prev.current + 1 }));
-            } catch (e) {
-              addLog(`DB 저장 실패: ${e}`, "error", pageIndex + 1, orderId);
+          // 페이지 내 주문 순회
+          for (const orderItem of orderList) {
+            if (stopRequestedRef.current) {
+              addLog("사용자 요청으로 수집 중단", "info", globalPageCount);
+              break;
+            }
+            
+            const orderId = String(orderItem.orderId);
+            
+            // 중복 체크 (증분 수집 모드)
+            if (stopAtOrderId && orderId === stopAtOrderId) {
+              addLog(`이미 저장된 주문(${orderId})을 발견하여 이후 수집을 중단합니다.`, "info", globalPageCount, orderId);
+              reachedLastSynced = true;
+              break;
+            }
+            
+            // 상세 조회
+            const detail = await fetchAndParseDetail(orderId, extractedBuildId, headers);
+            
+            if (detail) {
+              // DB 저장
+              try {
+                await invoke("save_coupang_payment", {
+                  userId: account.id,
+                  payment: {
+                    orderId: detail.orderId,
+                    externalId: detail.externalId,
+                    statusCode: detail.statusCode,
+                    statusText: detail.statusText,
+                    statusColor: detail.statusColor,
+                    orderedAt: detail.orderedAt,
+                    paidAt: detail.paidAt,
+                    merchantName: detail.merchantName,
+                    merchantTel: detail.merchantTel,
+                    merchantUrl: detail.merchantUrl,
+                    merchantImageUrl: detail.merchantImageUrl,
+                    productName: detail.productName,
+                    productCount: detail.productCount,
+                    productDetailUrl: detail.productDetailUrl,
+                    orderDetailUrl: detail.orderDetailUrl,
+                    totalAmount: detail.totalAmount,
+                    totalOrderAmount: detail.totalOrderAmount,
+                    totalCancelAmount: detail.totalCancelAmount,
+                    discountAmount: detail.discountAmount,
+                    restAmount: detail.restAmount,
+                    mainPayType: detail.mainPayType,
+                    payRocketBalanceAmount: detail.payRocketBalanceAmount,
+                    payCardAmount: detail.payCardAmount,
+                    payCouponAmount: detail.payCouponAmount,
+                    payCoupangCashAmount: detail.payCoupangCashAmount,
+                    payRocketBankAmount: detail.payRocketBankAmount,
+                    wowInstantDiscount: detail.wowInstantDiscount,
+                    rewardCashAmount: detail.rewardCashAmount,
+                    items: detail.items.map(item => ({
+                      lineNo: item.lineNo,
+                      productId: item.productId,
+                      vendorItemId: item.vendorItemId,
+                      productName: item.productName,
+                      imageUrl: item.imageUrl,
+                      infoUrl: item.infoUrl,
+                      brandName: item.brandName,
+                      quantity: item.quantity,
+                      unitPrice: item.unitPrice,
+                      discountedUnitPrice: item.discountedUnitPrice,
+                      combinedUnitPrice: item.combinedUnitPrice,
+                      lineAmount: item.lineAmount,
+                      restAmount: item.restAmount,
+                      memo: item.memo,
+                    })),
+                  },
+                });
+                
+                const mainItem = detail.items[0];
+                addLog(
+                  `${detail.productName}`, 
+                  "success", 
+                  globalPageCount, 
+                  orderId, 
+                  mainItem?.imageUrl, 
+                  detail.totalAmount, 
+                  detail.orderedAt
+                );
+                setProgress(prev => ({ ...prev, success: prev.success + 1, current: prev.current + 1 }));
+              } catch (e) {
+                addLog(`DB 저장 실패: ${e}`, "error", globalPageCount, orderId);
+                setProgress(prev => ({ ...prev, failed: prev.failed + 1, current: prev.current + 1 }));
+              }
+            } else {
+              addLog(`상세 조회 실패`, "error", globalPageCount, orderId);
               setProgress(prev => ({ ...prev, failed: prev.failed + 1, current: prev.current + 1 }));
             }
-          } else {
-            addLog(`상세 조회 실패`, "error", pageIndex + 1, orderId);
-            setProgress(prev => ({ ...prev, failed: prev.failed + 1, current: prev.current + 1 }));
+            
+            // 과부하 방지 딜레이 (100ms~300ms)
+            await delay(Math.random() * 200 + 100);
           }
           
-          // 과부하 방지 딜레이 (100ms~300ms)
-          await delay(Math.random() * 200 + 100);
+          if (reachedLastSynced) {
+            addLog("마지막 저장된 주문까지 수집 완료", "success", globalPageCount);
+            break yearLoop;
+          }
+          
+          // pageIndex를 증가시켜 다음 페이지로 이동
+          pageIndex++;
+          
+          // 페이지 간 딜레이
+          await delay(500);
         }
         
-        if (reachedLastSynced) {
-          addLog("마지막 저장된 주문까지 수집 완료", "success", pageIndex + 1);
-          break;
+        // 연속 빈 연도 체크
+        if (yearHasData) {
+          consecutiveEmptyYears = 0;
+        } else {
+          consecutiveEmptyYears++;
+          if (consecutiveEmptyYears > MAX_EMPTY_YEARS) {
+            addLog(`${MAX_EMPTY_YEARS}년 연속 주문이 없어 수집을 종료합니다.`, "info", globalPageCount);
+            break yearLoop;
+          }
         }
         
-        // pageIndex를 증가시켜 다음 페이지로 이동
-        pageIndex++;
-        
-        // 페이지 간 딜레이
-        await delay(500);
+        // 연도 간 딜레이
+        await delay(300);
       }
       
       addLog("수집 완료", "success", 0);

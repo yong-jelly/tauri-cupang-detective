@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { 
   Loader2, 
@@ -10,6 +10,8 @@ import {
   Minus,
   Crown,
   HelpCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { 
   BarChart, 
@@ -49,6 +51,21 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
+  
+  // 분기별 고가 주문 스크롤 ref
+  const topExpensesScrollRef = useRef<HTMLDivElement>(null);
+  
+  // 스크롤 함수 (4개 카드 너비만큼 이동)
+  const scrollTopExpenses = (direction: "left" | "right") => {
+    if (topExpensesScrollRef.current) {
+      // 컨테이너 너비 전체만큼 스크롤 (4개 카드가 보이므로)
+      const containerWidth = topExpensesScrollRef.current.clientWidth;
+      const newScrollLeft = direction === "left" 
+        ? topExpensesScrollRef.current.scrollLeft - containerWidth
+        : topExpensesScrollRef.current.scrollLeft + containerWidth;
+      topExpensesScrollRef.current.scrollTo({ left: newScrollLeft, behavior: "smooth" });
+    }
+  };
 
   useEffect(() => {
     const loadPayments = async () => {
@@ -201,8 +218,10 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
     );
   }
 
-  // 차트용 데이터 (최근 12개월)
-  const chartData = stats.monthlyStatsWithMA.slice(-12);
+  // 차트용 데이터 (전체 선택 시 모든 월, 그 외 최근 12개월)
+  const chartData = periodFilter === "all" 
+    ? stats.monthlyStatsWithMA 
+    : stats.monthlyStatsWithMA.slice(-12);
 
   // 분기별로 그룹화된 고가 주문
   const groupedTopExpenses = topExpenses.reduce((acc, item) => {
@@ -658,17 +677,44 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
 
         {/* 분기별 고가 주문 랭킹 */}
         <div className="bg-[#fffef0] border-2 border-gray-800 shadow-[4px_4px_0px_0px_rgba(31,41,55,1)]">
-          <div className="p-4 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center gap-2">
-            <Crown className="w-5 h-5 text-[#c49a1a]" />
-            <h3 className="font-bold text-gray-800">분기별 고가 주문 TOP 5</h3>
+          <div className="p-4 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-[#c49a1a]" />
+              <h3 className="font-bold text-gray-800">분기별 고가 주문 TOP 5</h3>
+              <span className="text-xs text-gray-500 font-mono">({Object.keys(groupedTopExpenses).length}개 분기)</span>
+            </div>
+            {Object.keys(groupedTopExpenses).length > 4 && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => scrollTopExpenses("left")}
+                  className="p-1.5 border-2 border-gray-800 bg-white hover:bg-gray-100 transition-colors"
+                  aria-label="이전 분기로"
+                >
+                  <ChevronLeft className="w-4 h-4 text-gray-700" />
+                </button>
+                <button
+                  onClick={() => scrollTopExpenses("right")}
+                  className="p-1.5 border-2 border-gray-800 bg-white hover:bg-gray-100 transition-colors"
+                  aria-label="다음 분기로"
+                >
+                  <ChevronRight className="w-4 h-4 text-gray-700" />
+                </button>
+              </div>
+            )}
           </div>
           <div className="p-4">
             {Object.keys(groupedTopExpenses).length === 0 ? (
               <div className="text-center text-gray-500 py-8 font-mono">데이터가 없습니다</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {Object.entries(groupedTopExpenses).map(([quarter, data]) => (
-                  <div key={quarter} className="bg-[#f6f1e9] border border-[#d4c4a8] p-4">
+              <div 
+                ref={topExpensesScrollRef}
+                className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
+                style={{ scrollbarWidth: "thin" }}
+              >
+                {Object.entries(groupedTopExpenses)
+                  .sort(([a], [b]) => b.localeCompare(a))
+                  .map(([quarter, data]) => (
+                  <div key={quarter} className="bg-[#f6f1e9] border border-[#d4c4a8] p-4 w-[calc(25%-12px)] min-w-[220px] flex-shrink-0">
                     <div className="text-sm font-bold text-gray-800 mb-3 pb-2 border-b border-dashed border-[#d4c4a8] font-mono">
                       {data.year}년 {data.quarterNum}분기
                     </div>
@@ -717,7 +763,7 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.monthlyStats.slice(0, 12).map((m, idx) => (
+                  {(periodFilter === "all" ? stats.monthlyStats : stats.monthlyStats.slice(0, 12)).map((m, idx) => (
                     <tr key={m.month} className={idx % 2 === 0 ? "bg-[#fffef0]" : "bg-[#f6f1e9]"}>
                       <td className="px-4 py-2 text-gray-800">{m.month}</td>
                       <td className="px-4 py-2 text-right font-bold text-gray-900">{formatAmount(m.amount)}</td>
