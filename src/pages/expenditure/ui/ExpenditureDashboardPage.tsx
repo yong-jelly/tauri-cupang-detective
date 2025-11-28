@@ -17,6 +17,7 @@ import type { User, NaverPaymentListItem, CoupangPaymentListItem } from "@shared
 import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
 import { parseNaverPayments, parseCoupangPayments } from "@shared/lib/paymentParsers";
 import { processExpenditureData } from "../lib/utils";
+import { TransactionTable } from "@shared/ui";
 
 interface ExpenditureDashboardPageProps {
   account: User;
@@ -384,59 +385,14 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
               {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월 거래 기록
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse font-mono text-sm">
-              <thead>
-                <tr className="border-b-2 border-gray-800 bg-[#fdfbf7]">
-                  <th className="p-4 font-bold text-gray-800 w-32 border-r border-gray-200">날짜</th>
-                  <th className="p-4 font-bold text-gray-800 border-r border-gray-200">거래 내역</th>
-                  <th className="p-4 font-bold text-gray-800 w-40 text-right">금액</th>
-                </tr>
-              </thead>
-              <tbody className="bg-[linear-gradient(transparent_95%,#ede9dd_95%)] bg-[length:100%_2.5rem]">
-                {stats.sortedPayments.slice(0, visibleCount).map((payment, idx) => (
-                  <tr
-                    key={payment.id}
-                    className={`h-10 transition-colors ${
-                      idx % 2 === 0 ? "bg-white/80" : "bg-white/60"
-                    } hover:bg-yellow-50/70`}
-                  >
-                    <td className="px-4 border-r border-gray-200 text-gray-600 align-middle">
-                      {payment.paid_at.substring(0, 10)}
-                    </td>
-                    <td className="px-4 border-r border-gray-200 text-gray-900 font-semibold align-middle truncate">
-                      {payment.product_name || payment.merchant_name}
-                      {payment.items.length > 1 && (
-                        <span className="ml-2 text-xs text-gray-500 font-normal">
-                          외 {payment.items.length - 1}건
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 text-right text-gray-900 font-bold align-middle">
-                      ₩{payment.total_amount.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {visibleCount < stats.sortedPayments.length && (
-            <div className="p-4 bg-[#fdfbf7] border-t-2 border-gray-800 text-center">
-              <button
-                onClick={handleLoadMore}
-                className="px-6 py-2 bg-gray-900 text-[#fdfbf7] font-bold font-mono text-sm tracking-widest hover:bg-gray-800 transition-colors shadow-[3px_3px_0px_0px_rgba(31,41,55,0.6)] active:translate-x-0.5 active:translate-y-0.5"
-              >
-                더보기 ({stats.sortedPayments.length - visibleCount})
-              </button>
-            </div>
-          )}
-          
-          {stats.sortedPayments.length === 0 && (
-            <div className="p-8 text-center text-gray-500 font-mono border-t-2 border-gray-800 italic">
-              해당 기간에는 거래 내역이 없습니다.
-            </div>
-          )}
+          <TransactionTable
+            payments={stats.sortedPayments}
+            visibleCount={visibleCount}
+            showLoadMore={visibleCount < stats.sortedPayments.length}
+            remainingCount={stats.sortedPayments.length - visibleCount}
+            onLoadMore={handleLoadMore}
+            emptyMessage="해당 기간에는 거래 내역이 없습니다."
+          />
         </div>
       </div>
     </div>

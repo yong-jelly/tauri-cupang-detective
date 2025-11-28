@@ -37,3 +37,7 @@ export {
   RetroTableEmpty,
 } from "./RetroTable";
 
+// TransactionTable
+export { TransactionTable } from "./TransactionTable";
+export type { TransactionTableProps } from "./TransactionTable";
+
