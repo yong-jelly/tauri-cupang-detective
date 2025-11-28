@@ -40,7 +40,8 @@ const HeroLayout = ({
 }) => {
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center px-6 text-center gap-6 overflow-hidden bg-[#fdfbf7] font-mono">
-      <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(45,36,22,0.03)_25%,rgba(45,36,22,0.03)_50%,transparent_50%,transparent_75%,rgba(45,36,22,0.03)_75%)] bg-[length:20px_20px]" />
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       <div className="relative max-w-xl space-y-6">
         <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-[#2d2416] bg-[#e9c46a] border-2 border-gray-800 px-4 py-2 shadow-[3px_3px_0px_0px_rgba(31,41,55,1)]">
           <Sparkles className="w-3 h-3" />
@@ -226,8 +227,10 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }, [status?.sizeBytes]);
 
   const renderLoading = () => (
-    <div className="flex flex-col h-full bg-[#fdfbf7] font-mono">
-      <header className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
+    <div className="relative flex flex-col h-full bg-[#fdfbf7] font-mono">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
+      <header className="relative h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-gray-600 font-bold">System</p>
           <h1 className="text-xl font-bold text-gray-900 font-serif">시스템 설정</h1>
@@ -262,15 +265,17 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#fdfbf7] font-mono">
-      <header className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
+    <div className="relative flex flex-col h-full bg-[#fdfbf7] font-mono">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
+      <header className="relative h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-gray-600 font-bold">System</p>
           <h1 className="text-xl font-bold text-gray-900 font-serif">시스템 설정</h1>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="relative flex-1 overflow-y-auto p-6 space-y-6">
         {feedback && (
           <div className="px-4 py-3 border-2 border-[#2a9d8f] bg-[#2a9d8f]/10 text-[#264653] text-sm font-bold">
             {feedback}

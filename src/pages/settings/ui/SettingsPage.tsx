@@ -251,12 +251,14 @@ export const SettingsPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center px-6 flex-shrink-0">
+    <div className="relative flex flex-col h-full bg-[#fdfbf7]">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
+      <div className="relative h-16 border-b-2 border-[#2d2416] bg-[#f6f1e9] flex items-center px-6 flex-shrink-0">
         <h1 className="text-lg font-semibold text-gray-900">설정 · 계정 관리</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="relative flex-1 overflow-y-auto p-6 space-y-6">
         <section className="bg-white border rounded-lg p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">사용법</h2>
           <p className="text-sm text-gray-600 mt-2">

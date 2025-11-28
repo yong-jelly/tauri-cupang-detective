@@ -71,9 +71,11 @@ export const HomePage = () => {
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("monthly");
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50">
+    <div className="relative flex-1 flex flex-col h-full overflow-hidden bg-[#fdfbf7]">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       {/* Header */}
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+      <div className="relative h-16 border-b-2 border-[#2d2416] bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
         <Breadcrumbs separator="›" aria-label="breadcrumb" sx={{ fontSize: "0.875rem" }}>
           <Link color="inherit" href="#" sx={{ textDecoration: "none", color: "#6b7280" }}>
             대시보드
@@ -108,7 +110,7 @@ export const HomePage = () => {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="relative flex-1 overflow-y-auto p-6">
         {/* Welcome Message */}
         <Box mb={4}>
           <Typography variant="h4" sx={{ fontWeight: 600, color: "#111827", mb: 0.5 }}>

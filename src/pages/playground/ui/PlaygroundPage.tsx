@@ -70,18 +70,20 @@ export const PlaygroundPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 flex-shrink-0">
+    <div className="relative flex flex-col h-full bg-[#fdfbf7]">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
+      <div className="relative h-16 border-b-2 border-[#2d2416] bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">
         <h1 className="text-lg font-semibold text-gray-900">HTTP Playground</h1>
         <span className="text-xs font-normal text-gray-500 bg-gray-100 px-2 py-1 rounded">Paste full cURL command below</span>
       </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative flex-1 flex flex-col overflow-hidden">
         {/* Split View */}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
           
           {/* Left: Input */}
-          <div className="flex-1 flex flex-col p-6 border-r border-gray-200 min-w-[300px] bg-white">
+          <div className="flex-1 flex flex-col p-6 border-r-2 border-[#2d2416] min-w-[300px] bg-[#fffef0]">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               cURL Command
             </label>
@@ -106,7 +108,7 @@ export const PlaygroundPage = () => {
           </div>
 
           {/* Right: Response */}
-          <div className="flex-1 flex flex-col p-6 bg-white min-w-[300px]">
+          <div className="flex-1 flex flex-col p-6 bg-[#fffef0] min-w-[300px]">
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-gray-700">Response</label>
               {status !== null && (

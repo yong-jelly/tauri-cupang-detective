@@ -101,8 +101,10 @@ export const AccountManagementPage = ({ onAddAccount, onAccountsChange }: Accoun
   }, [testModalOpen, testAccount]);
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-[#fdfbf7] font-mono p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="relative flex-1 h-full overflow-y-auto bg-[#fdfbf7] font-mono p-8">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
+      <div className="relative max-w-6xl mx-auto space-y-8">
         {/* 헤더 섹션 */}
         <div className="border-b-4 border-[#2d2416] pb-4 flex justify-between items-end">
           <div>

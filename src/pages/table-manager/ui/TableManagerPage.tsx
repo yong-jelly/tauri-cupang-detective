@@ -89,9 +89,11 @@ export const TableManagerPage = () => {
   const totalPages = tableData ? Math.ceil(tableData.totalCount / limit) : 0;
 
   return (
-    <div className="flex h-full bg-[#fdfbf7] overflow-hidden font-mono">
+    <div className="relative flex h-full bg-[#fdfbf7] overflow-hidden font-mono">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       {/* Left Sidebar: Table List */}
-      <div className="w-72 bg-[#fffef0] border-r-2 border-gray-800 flex flex-col">
+      <div className="relative w-72 bg-[#fffef0] border-r-2 border-gray-800 flex flex-col">
         <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-4 justify-between">
           <h2 className="font-bold text-gray-900 flex items-center gap-2 uppercase tracking-wider text-sm">
             <Database className="w-4 h-4" />
@@ -137,7 +139,7 @@ export const TableManagerPage = () => {
       </div>
 
       {/* Right Content: Data Viewer */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="relative flex-1 flex flex-col overflow-hidden">
         {selectedTable ? (
           <>
             <div className="h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center justify-between px-6 flex-shrink-0">

@@ -183,9 +183,11 @@ export const SearchResultsView = ({
   };
 
   return (
-    <div className="flex-1 h-full overflow-hidden flex flex-col bg-[#fdfbf7] font-mono">
+    <div className="relative flex-1 h-full overflow-hidden flex flex-col bg-[#fdfbf7] font-mono">
+      {/* 배경 패턴 */}
+      <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       {/* 헤더 */}
-      <div className="flex-shrink-0 px-8 py-6 border-b-4 border-[#2d2416] bg-[#fffef0]">
+      <div className="relative flex-shrink-0 px-8 py-6 border-b-4 border-[#2d2416] bg-[#fffef0]">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-[#2d2416] flex items-center justify-center">
@@ -213,7 +215,7 @@ export const SearchResultsView = ({
       </div>
 
       {/* 콘텐츠 */}
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="relative flex-1 overflow-y-auto p-8">
         <div className="max-w-6xl mx-auto">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
