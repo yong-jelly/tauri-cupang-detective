@@ -20,6 +20,7 @@ import {
   Grid3X3,
   BookOpen,
   PenLine,
+  LogOut,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -32,6 +33,7 @@ interface SidebarProps {
   accountsLoading?: boolean;
   onNavigate?: (page: string) => void;
   onSelectAccount?: (accountId: string | null) => void;
+  onLogout?: () => void;
 }
 
 export const Sidebar = ({
@@ -41,6 +43,7 @@ export const Sidebar = ({
   accountsLoading: externalLoading,
   onNavigate,
   onSelectAccount,
+  onLogout,
 }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -487,7 +490,7 @@ export const Sidebar = ({
       </div>
 
       {/* 하단 메뉴 */}
-      <div className="border-t border-[#2d2416]/10 bg-[#f6f1e9]/50 p-2">
+      <div className="border-t border-[#2d2416]/10 bg-[#f6f1e9]/50 p-2 space-y-1">
         <button
           onClick={() => handleNavigation("system")}
           className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-[13px] ${
@@ -499,6 +502,15 @@ export const Sidebar = ({
           <Settings className="w-4 h-4" />
           <span>시스템 설정</span>
         </button>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-[13px] text-[#e76f51] hover:bg-[#e76f51]/10 hover:text-[#e76f51]"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>로그아웃</span>
+          </button>
+        )}
       </div>
     </div>
   );

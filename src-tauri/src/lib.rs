@@ -572,6 +572,26 @@ fn get_db_status(app_handle: AppHandle, state: State<AppState>) -> Result<DbStat
     }
 }
 
+// 로그아웃: config에서 DB 경로 제거 및 메모리 상태 초기화
+#[tauri::command]
+fn logout(app_handle: AppHandle, state: State<AppState>) -> Result<(), String> {
+    // 메모리 상태 초기화
+    {
+        let mut guard = state.db_path.lock().expect("failed to lock db_path");
+        *guard = None;
+    }
+    
+    // config 파일에서 dbPath 제거
+    let file = config_file(&app_handle)?;
+    if file.exists() {
+        let payload = json!({ "dbPath": "" });
+        let serialized = serde_json::to_vec_pretty(&payload).map_err(|e| e.to_string())?;
+        fs::write(&file, serialized).map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
+}
+
 #[tauri::command]
 fn init_db(
     app_handle: AppHandle,
@@ -1778,6 +1798,7 @@ pub fn run() {
             get_db_status,
             init_db,
             load_existing_db,
+            logout,
             has_users,
             list_users,
             save_account,

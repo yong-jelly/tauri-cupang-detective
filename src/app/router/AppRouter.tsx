@@ -174,6 +174,22 @@ const RouterContent = () => {
     }
   }, []);
 
+  // 로그아웃: DB 연결 해제 후 초기 화면으로 이동
+  const handleLogout = useCallback(async () => {
+    try {
+      await invoke("logout");
+      // 상태 초기화
+      setDbStatus(null);
+      setAccounts([]);
+      setHasUsers(null);
+      setSelectedAccountId(null);
+      // DB 상태 새로고침하여 초기 화면(DB 선택 화면)으로 전환
+      await refreshDbStatus();
+    } catch (err) {
+      console.error("로그아웃 실패:", err);
+    }
+  }, [refreshDbStatus]);
+
   const loadAccounts = useCallback(async () => {
     if (!dbStatus || !dbStatus.configured || !dbStatus.exists) {
       setAccounts([]);
@@ -320,6 +336,7 @@ const RouterContent = () => {
             accountsLoading={usersLoading}
             selectedAccountId={selectedAccountId}
             onSelectAccount={handleSelectAccount}
+            onLogout={handleLogout}
           />
         }
       >

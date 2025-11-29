@@ -8,6 +8,7 @@ interface MainLayoutProps {
   accountsLoading: boolean;
   selectedAccountId: string | null;
   onSelectAccount: (accountId: string | null) => void;
+  onLogout: () => void;
 }
 
 export const MainLayout = ({
@@ -15,6 +16,7 @@ export const MainLayout = ({
   accountsLoading,
   selectedAccountId,
   onSelectAccount,
+  onLogout,
 }: MainLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -143,6 +145,7 @@ export const MainLayout = ({
           accountsLoading={accountsLoading}
           onNavigate={handleNavigate}
           onSelectAccount={onSelectAccount}
+          onLogout={onLogout}
         />
       )}
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#f8f6f1]">
