@@ -33,6 +33,14 @@ import type { User, NaverPaymentListItem, CoupangPaymentListItem } from "@shared
 import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
 import { parseNaverPayments, parseCoupangPayments } from "@shared/lib/paymentParsers";
 import { processOverviewData, formatAmount, formatChangeRate, getQuarterlyTopExpenses } from "../lib/utils";
+import { PaymentListModal } from "@shared/ui";
+
+// 가격대 범위 타입
+interface PriceRange {
+  label: string;
+  min: number;
+  max: number;
+}
 
 interface ExpenditureOverviewPageProps {
   account: User;
@@ -44,6 +52,16 @@ const RETRO_COLORS = ["#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51", "#8
 // 기간 필터 타입
 type PeriodFilter = "all" | "year" | "quarter" | "month";
 
+// 가격대 범위 정의 (상수)
+const PRICE_RANGES: PriceRange[] = [
+  { label: "~1만원", min: 0, max: 10000 },
+  { label: "1~3만원", min: 10000, max: 30000 },
+  { label: "3~5만원", min: 30000, max: 50000 },
+  { label: "5~10만원", min: 50000, max: 100000 },
+  { label: "10~30만원", min: 100000, max: 300000 },
+  { label: "30만원~", min: 300000, max: Infinity },
+];
+
 export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProps) => {
   const [payments, setPayments] = useState<UnifiedPayment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +69,9 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("all");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedQuarter, setSelectedQuarter] = useState<number>(Math.floor(new Date().getMonth() / 3) + 1);
+  
+  // 가격대별 팝업 상태
+  const [selectedPriceRange, setSelectedPriceRange] = useState<PriceRange | null>(null);
   
   // 분기별 고가 주문 스크롤 ref
   const topExpensesScrollRef = useRef<HTMLDivElement>(null);
@@ -163,26 +184,25 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
 
   // 가격대별 분포 데이터
   const priceDistribution = useMemo(() => {
-    const ranges = [
-      { label: "~1만원", min: 0, max: 10000 },
-      { label: "1~3만원", min: 10000, max: 30000 },
-      { label: "3~5만원", min: 30000, max: 50000 },
-      { label: "5~10만원", min: 50000, max: 100000 },
-      { label: "10~30만원", min: 100000, max: 300000 },
-      { label: "30만원~", min: 300000, max: Infinity },
-    ];
-
-    return ranges.map(range => {
+    return PRICE_RANGES.map(range => {
       const items = filteredPayments.filter(p => p.total_amount >= range.min && p.total_amount < range.max);
       const totalAmount = items.reduce((sum, p) => sum + p.total_amount, 0);
       return {
-        label: range.label,
+        ...range,
         count: items.length,
         amount: totalAmount,
         avgAmount: items.length > 0 ? Math.round(totalAmount / items.length) : 0,
       };
     });
   }, [filteredPayments]);
+
+  // 선택된 가격대의 결제 목록
+  const selectedPriceRangePayments = useMemo(() => {
+    if (!selectedPriceRange) return [];
+    return filteredPayments.filter(
+      p => p.total_amount >= selectedPriceRange.min && p.total_amount < selectedPriceRange.max
+    );
+  }, [filteredPayments, selectedPriceRange]);
 
   // 증감 아이콘
   const ChangeIcon = ({ rate }: { rate: number }) => {
@@ -311,14 +331,18 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {priceDistribution.map((range, idx) => (
-              <div key={idx} className="bg-[#f6f1e9] border border-[#d4c4a8] p-4 text-center">
+              <button
+                key={idx}
+                onClick={() => setSelectedPriceRange(range)}
+                className="bg-[#f6f1e9] border border-[#d4c4a8] p-4 text-center cursor-pointer hover:bg-[#ede5d5] hover:border-gray-500 hover:shadow-[2px_2px_0px_0px_rgba(31,41,55,0.5)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+              >
                 <div className="text-xs font-bold text-gray-600 mb-2 uppercase tracking-wider">{range.label}</div>
                 <div className="text-2xl font-bold font-mono text-gray-900">{range.count.toLocaleString()}</div>
                 <div className="text-[10px] text-gray-500 mt-1">건</div>
                 <div className="border-t border-dashed border-gray-400 mt-3 pt-2">
                   <div className="text-xs font-mono text-gray-700">{formatAmount(range.amount)}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
           {/* 차트 범례 */}
@@ -857,6 +881,15 @@ export const ExpenditureOverviewPage = ({ account }: ExpenditureOverviewPageProp
           </div>
         </div>
       </div>
+
+      {/* 가격대별 구매 내역 팝업 */}
+      <PaymentListModal
+        isOpen={selectedPriceRange !== null}
+        onClose={() => setSelectedPriceRange(null)}
+        payments={selectedPriceRangePayments}
+        title={`${selectedPriceRange?.label || ""} 구매 내역`}
+        // subtitle={`${selectedPriceRangePayments.length}건 · ${periodText}`}
+      />
     </div>
   );
 };

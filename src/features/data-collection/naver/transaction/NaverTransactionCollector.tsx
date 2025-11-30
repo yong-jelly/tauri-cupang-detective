@@ -154,7 +154,8 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
         payId: resultData.payment?.id || resultData.order?.orderNo || payId,
         externalId: undefined,
         serviceType: serviceType,
-        statusCode: resultData.payment?.status,
+        // statusCode는 목록 API의 status.name에서 가져옴 (상세 API는 구조가 다를 수 있음)
+        statusCode: undefined,
         statusText: undefined,
         paidAt: resultData.payment?.date || new Date(resultData.order?.orderDateTime || Date.now()).toISOString(),
         merchantName: resultData.merchant?.name || resultData.productBundleGroups?.[Object.keys(resultData.productBundleGroups)[0]]?.merchantName || "Unknown",
@@ -333,8 +334,9 @@ export const NaverTransactionCollector = ({ account }: NaverTransactionCollector
              const detail = await fetchAndParseDetail(payId, serviceType, orderNo, headers);
              
              if (detail) {
-                 // 목록 데이터 보강
+                 // 목록 데이터 보강 (목록 API에서 status 정보 가져옴)
                  detail.externalId = item._id;
+                 detail.statusCode = item.status?.name;
                  detail.statusText = item.status?.text;
                  detail.statusColor = item.status?.color;
                  if (item.productDetailUrl) detail.productDetailUrl = item.productDetailUrl;

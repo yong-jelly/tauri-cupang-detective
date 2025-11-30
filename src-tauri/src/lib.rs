@@ -1,7 +1,7 @@
 use chrono::Utc;
 use curl::easy::{Easy, List};
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fs;
@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
+use md5;
 
 #[derive(Default)]
 struct AppState {
@@ -314,6 +315,64 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         
         CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_item_payment_line 
             ON tbl_coupang_payment_item (payment_id, line_no);
+        
+        -- 가계부 계정 테이블
+        CREATE TABLE IF NOT EXISTS tbl_ledger_account (
+            id TEXT PRIMARY KEY,
+            nickname TEXT NOT NULL,
+            password_hash TEXT,
+            password_expires_at TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        
+        -- 가계부 항목 테이블
+        CREATE TABLE IF NOT EXISTS tbl_ledger_entry (
+            id TEXT PRIMARY KEY,
+            account_id TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('income', 'expense')),
+            amount INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            platform TEXT CHECK(platform IN ('offline', 'online_shopping', 'social', 'app', 'subscription', 'etc')),
+            url TEXT,
+            merchant TEXT,
+            payment_method TEXT,
+            memo TEXT,
+            color TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(account_id) REFERENCES tbl_ledger_account(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_ledger_entry_account_id ON tbl_ledger_entry(account_id);
+        CREATE INDEX IF NOT EXISTS idx_ledger_entry_date ON tbl_ledger_entry(date);
+        
+        -- 가계부 태그 테이블
+        CREATE TABLE IF NOT EXISTS tbl_ledger_tag (
+            id TEXT PRIMARY KEY,
+            entry_id TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(entry_id) REFERENCES tbl_ledger_entry(id) ON DELETE CASCADE,
+            UNIQUE(entry_id, tag)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_ledger_tag_entry_id ON tbl_ledger_tag(entry_id);
+        
+        -- 가계부 변경 이력 테이블
+        CREATE TABLE IF NOT EXISTS tbl_ledger_history (
+            id TEXT PRIMARY KEY,
+            entry_id TEXT NOT NULL,
+            action TEXT NOT NULL CHECK(action IN ('create', 'update', 'delete')),
+            snapshot_before TEXT,
+            snapshot_after TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(entry_id) REFERENCES tbl_ledger_entry(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_ledger_history_entry_id ON tbl_ledger_history(entry_id);
     "#,
     )
     .map_err(|e| e.to_string())?;
@@ -1137,6 +1196,7 @@ fn list_naver_payments(
                     total_amount, discount_amount
              FROM tbl_naver_payment
              WHERE user_id = ?1
+               AND status_code IN ('PURCHASE_CONFIRMED', 'PAYMENT_COMPLETED', 'DELIVERED', 'PURCHASE_CONFIRM_EXTENDED')
                AND (service_type IS NULL OR service_type NOT IN ('BOOKING', 'CONTENTS'))
              ORDER BY paid_at DESC
              LIMIT ?2 OFFSET ?3"
@@ -1277,6 +1337,7 @@ fn list_coupang_payments(
                     discount_amount, rest_amount, main_pay_type
              FROM tbl_coupang_payment
              WHERE user_id = ?1
+               AND (status_code IS NULL OR status_code != 'CANCELED')
              ORDER BY ordered_at DESC
              LIMIT ?2 OFFSET ?3"
         )
@@ -1542,13 +1603,14 @@ fn search_products(
     
     let mut items = Vec::new();
     
-    // 네이버 결제 항목 검색
+    // 네이버 결제 항목 검색 (실제 거래만: 구매확정, 결제완료, 배송완료, 구매확정연장)
     let mut naver_stmt = conn.prepare(
         "SELECT i.id, i.product_name, i.image_url, p.merchant_name, p.paid_at, 
                 i.quantity, i.unit_price, i.line_amount
          FROM tbl_naver_payment_item i
          JOIN tbl_naver_payment p ON i.payment_id = p.id
          WHERE i.product_name LIKE ?1
+           AND p.status_code IN ('PURCHASE_CONFIRMED', 'PAYMENT_COMPLETED', 'DELIVERED', 'PURCHASE_CONFIRM_EXTENDED')
          ORDER BY p.paid_at DESC
          LIMIT ?2"
     ).map_err(|e| e.to_string())?;
@@ -1571,13 +1633,14 @@ fn search_products(
         items.push(row.map_err(|e| e.to_string())?);
     }
     
-    // 쿠팡 결제 항목 검색
+    // 쿠팡 결제 항목 검색 (CANCELED 상태 제외)
     let mut coupang_stmt = conn.prepare(
         "SELECT i.id, i.product_name, i.image_url, p.merchant_name, p.ordered_at,
                 i.quantity, i.unit_price, i.line_amount
          FROM tbl_coupang_payment_item i
          JOIN tbl_coupang_payment p ON i.payment_id = p.id
          WHERE i.product_name LIKE ?1
+           AND (p.status_code IS NULL OR p.status_code != 'CANCELED')
          ORDER BY p.ordered_at DESC
          LIMIT ?2"
     ).map_err(|e| e.to_string())?;
@@ -1785,6 +1848,701 @@ async fn proxy_request(
     .map_err(|e| e.to_string())?
 }
 
+// ========== 가계부 관련 구조체 및 함수 ==========
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerAccount {
+    id: String,
+    nickname: String,
+    password_hash: Option<String>,
+    password_expires_at: Option<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerEntry {
+    id: String,
+    account_id: String,
+    r#type: String,
+    amount: i64,
+    date: String,
+    title: String,
+    category: String,
+    platform: Option<String>,
+    url: Option<String>,
+    merchant: Option<String>,
+    payment_method: Option<String>,
+    memo: Option<String>,
+    color: Option<String>,
+    tags: Vec<String>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerEntryInput {
+    account_id: String,
+    r#type: String,
+    amount: i64,
+    date: String,
+    title: String,
+    category: String,
+    platform: Option<String>,
+    url: Option<String>,
+    merchant: Option<String>,
+    payment_method: Option<String>,
+    memo: Option<String>,
+    color: Option<String>,
+    tags: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LedgerHistory {
+    id: String,
+    entry_id: String,
+    action: String,
+    snapshot_before: Option<String>,
+    snapshot_after: Option<String>,
+    created_at: String,
+}
+
+fn hash_password(password: &str) -> String {
+    let digest = md5::compute(password.as_bytes());
+    format!("{:x}", digest)
+}
+
+fn check_and_reset_expired_passwords(conn: &Connection) -> Result<(), String> {
+    let now = Utc::now().to_rfc3339();
+    conn.execute(
+        "UPDATE tbl_ledger_account 
+         SET password_hash = NULL, password_expires_at = NULL, updated_at = ?1 
+         WHERE password_expires_at IS NOT NULL AND password_expires_at < ?1",
+        [&now],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn create_ledger_account(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    nickname: String,
+    password: Option<String>,
+) -> Result<LedgerAccount, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let account_id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    
+    let password_hash = password.map(|p| hash_password(&p));
+    let password_expires_at = password_hash.as_ref().map(|_| {
+        let expires = Utc::now() + chrono::Duration::days(30);
+        expires.to_rfc3339()
+    });
+    
+    conn.execute(
+        "INSERT INTO tbl_ledger_account (id, nickname, password_hash, password_expires_at, created_at, updated_at) 
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![account_id, nickname, password_hash, password_expires_at, now, now],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    Ok(LedgerAccount {
+        id: account_id,
+        nickname,
+        password_hash,
+        password_expires_at,
+        created_at: now.clone(),
+        updated_at: now,
+    })
+}
+
+#[tauri::command]
+fn list_ledger_accounts(
+    app_handle: AppHandle,
+    state: State<AppState>,
+) -> Result<Vec<LedgerAccount>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let mut stmt = conn
+        .prepare("SELECT id, nickname, password_hash, password_expires_at, created_at, updated_at FROM tbl_ledger_account ORDER BY created_at DESC")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(LedgerAccount {
+                id: row.get(0)?,
+                nickname: row.get(1)?,
+                password_hash: row.get(2)?,
+                password_expires_at: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut accounts = Vec::new();
+    for row in rows {
+        accounts.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(accounts)
+}
+
+#[tauri::command]
+fn verify_ledger_password(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    account_id: String,
+    password: String,
+) -> Result<bool, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let password_hash = hash_password(&password);
+    let stored_hash: Option<String> = conn
+        .query_row(
+            "SELECT password_hash FROM tbl_ledger_account WHERE id = ?1",
+            [account_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    
+    Ok(stored_hash.map(|h| h == password_hash).unwrap_or(false))
+}
+
+#[tauri::command]
+fn update_ledger_password(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    account_id: String,
+    password: String,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let password_hash = hash_password(&password);
+    let expires_at = Utc::now() + chrono::Duration::days(30);
+    let now = Utc::now().to_rfc3339();
+    
+    conn.execute(
+        "UPDATE tbl_ledger_account 
+         SET password_hash = ?1, password_expires_at = ?2, updated_at = ?3 
+         WHERE id = ?4",
+        rusqlite::params![password_hash, expires_at.to_rfc3339(), now, account_id],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn check_password_expiry(
+    app_handle: AppHandle,
+    state: State<AppState>,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    check_and_reset_expired_passwords(&conn)
+}
+
+#[tauri::command]
+fn delete_ledger_account(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    account_id: String,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    conn.execute("DELETE FROM tbl_ledger_account WHERE id = ?1", [account_id])
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn create_ledger_entry(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    account_id: String,
+    entry: LedgerEntryInput,
+) -> Result<String, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let mut conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&tx)?;
+    
+    let entry_id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    
+    // 항목 저장
+    tx.execute(
+        "INSERT INTO tbl_ledger_entry 
+         (id, account_id, type, amount, date, title, category, platform, url, merchant, payment_method, memo, color, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+        rusqlite::params![
+            entry_id, account_id, entry.r#type, entry.amount, entry.date, entry.title,
+            entry.category, entry.platform, entry.url, entry.merchant, entry.payment_method,
+            entry.memo, entry.color, now, now
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    // 태그 저장
+    for tag in &entry.tags {
+        let tag_id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO tbl_ledger_tag (id, entry_id, tag, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![tag_id, entry_id, tag, now],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    
+    // 히스토리 기록 (완전한 LedgerEntry 생성)
+    let full_entry = LedgerEntry {
+        id: entry_id.clone(),
+        account_id: account_id.clone(),
+        r#type: entry.r#type.clone(),
+        amount: entry.amount,
+        date: entry.date.clone(),
+        title: entry.title.clone(),
+        category: entry.category.clone(),
+        platform: entry.platform.clone(),
+        url: entry.url.clone(),
+        merchant: entry.merchant.clone(),
+        payment_method: entry.payment_method.clone(),
+        memo: entry.memo.clone(),
+        color: entry.color.clone(),
+        tags: entry.tags.clone(),
+        created_at: now.clone(),
+        updated_at: now.clone(),
+    };
+    let snapshot_after = serde_json::to_string(&full_entry).map_err(|e| e.to_string())?;
+    let history_id = Uuid::new_v4().to_string();
+    tx.execute(
+        "INSERT INTO tbl_ledger_history (id, entry_id, action, snapshot_after, created_at) 
+         VALUES (?1, ?2, 'create', ?3, ?4)",
+        rusqlite::params![history_id, entry_id, snapshot_after, now],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(entry_id)
+}
+
+#[tauri::command]
+fn update_ledger_entry(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    entry_id: String,
+    entry: LedgerEntryInput,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let mut conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&tx)?;
+    
+    // 기존 항목 조회 (히스토리용)
+    let (existing_account_id, existing_created_at): (String, String) = tx
+        .query_row(
+            "SELECT account_id, created_at FROM tbl_ledger_entry WHERE id = ?1",
+            [&entry_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let snapshot_before: Option<String> = tx
+        .query_row(
+            "SELECT json_object(
+                'id', id, 'account_id', account_id, 'type', type, 'amount', amount,
+                'date', date, 'title', title, 'category', category, 'platform', platform,
+                'url', url, 'merchant', merchant, 'payment_method', payment_method,
+                'memo', memo, 'color', color, 'created_at', created_at, 'updated_at', updated_at
+            ) FROM tbl_ledger_entry WHERE id = ?1",
+            [&entry_id],
+            |row| row.get(0),
+        )
+        .ok();
+    
+    let now = Utc::now().to_rfc3339();
+    
+    // 항목 업데이트
+    tx.execute(
+        "UPDATE tbl_ledger_entry 
+         SET type = ?1, amount = ?2, date = ?3, title = ?4, category = ?5, platform = ?6,
+             url = ?7, merchant = ?8, payment_method = ?9, memo = ?10, color = ?11, updated_at = ?12
+         WHERE id = ?13",
+        rusqlite::params![
+            entry.r#type, entry.amount, entry.date, entry.title, entry.category,
+            entry.platform, entry.url, entry.merchant, entry.payment_method,
+            entry.memo, entry.color, now, entry_id
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    // 태그 삭제 후 재생성
+    tx.execute("DELETE FROM tbl_ledger_tag WHERE entry_id = ?1", [&entry_id])
+        .map_err(|e| e.to_string())?;
+    
+    for tag in &entry.tags {
+        let tag_id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO tbl_ledger_tag (id, entry_id, tag, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![tag_id, entry_id, tag, now],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    
+    // 히스토리 기록 (완전한 LedgerEntry 생성)
+    let full_entry_after = LedgerEntry {
+        id: entry_id.clone(),
+        account_id: existing_account_id,
+        r#type: entry.r#type.clone(),
+        amount: entry.amount,
+        date: entry.date.clone(),
+        title: entry.title.clone(),
+        category: entry.category.clone(),
+        platform: entry.platform.clone(),
+        url: entry.url.clone(),
+        merchant: entry.merchant.clone(),
+        payment_method: entry.payment_method.clone(),
+        memo: entry.memo.clone(),
+        color: entry.color.clone(),
+        tags: entry.tags.clone(),
+        created_at: existing_created_at,
+        updated_at: now.clone(),
+    };
+    let snapshot_after = serde_json::to_string(&full_entry_after).map_err(|e| e.to_string())?;
+    let history_id = Uuid::new_v4().to_string();
+    tx.execute(
+        "INSERT INTO tbl_ledger_history (id, entry_id, action, snapshot_before, snapshot_after, created_at) 
+         VALUES (?1, ?2, 'update', ?3, ?4, ?5)",
+        rusqlite::params![history_id, entry_id, snapshot_before, snapshot_after, now],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_ledger_entry(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    entry_id: String,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let mut conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&tx)?;
+    
+    // 삭제 전 스냅샷 저장
+    let snapshot_before: Option<String> = tx
+        .query_row(
+            "SELECT json_object(
+                'id', id, 'account_id', account_id, 'type', type, 'amount', amount,
+                'date', date, 'title', title, 'category', category, 'platform', platform,
+                'url', url, 'merchant', merchant, 'payment_method', payment_method,
+                'memo', memo, 'color', color, 'created_at', created_at, 'updated_at', updated_at
+            ) FROM tbl_ledger_entry WHERE id = ?1",
+            [&entry_id],
+            |row| row.get(0),
+        )
+        .ok();
+    
+    let now = Utc::now().to_rfc3339();
+    
+    // 히스토리 기록
+    let history_id = Uuid::new_v4().to_string();
+    tx.execute(
+        "INSERT INTO tbl_ledger_history (id, entry_id, action, snapshot_before, created_at) 
+         VALUES (?1, ?2, 'delete', ?3, ?4)",
+        rusqlite::params![history_id, entry_id, snapshot_before, now],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    // 항목 삭제 (CASCADE로 태그도 자동 삭제)
+    tx.execute("DELETE FROM tbl_ledger_entry WHERE id = ?1", [entry_id])
+        .map_err(|e| e.to_string())?;
+    
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+fn list_ledger_entries(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    account_id: String,
+    year_month: String,
+) -> Result<Vec<LedgerEntry>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, account_id, type, amount, date, title, category, platform, url, merchant, 
+                    payment_method, memo, color, created_at, updated_at
+             FROM tbl_ledger_entry 
+             WHERE account_id = ?1 AND date LIKE ?2
+             ORDER BY date DESC, created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let date_pattern = format!("{}%", year_month);
+    let rows = stmt
+        .query_map(rusqlite::params![account_id, date_pattern], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+                row.get::<_, Option<String>>(7)?,
+                row.get::<_, Option<String>>(8)?,
+                row.get::<_, Option<String>>(9)?,
+                row.get::<_, Option<String>>(10)?,
+                row.get::<_, Option<String>>(11)?,
+                row.get::<_, Option<String>>(12)?,
+                row.get::<_, String>(13)?,
+                row.get::<_, String>(14)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut entries = Vec::new();
+    for row_result in rows {
+        let (
+            id, account_id, r#type, amount, date, title, category, platform, url, merchant,
+            payment_method, memo, color, created_at, updated_at,
+        ) = row_result.map_err(|e| e.to_string())?;
+        
+        // 태그 조회
+        let mut tag_stmt = conn
+            .prepare("SELECT tag FROM tbl_ledger_tag WHERE entry_id = ?1 ORDER BY tag")
+            .map_err(|e| e.to_string())?;
+        let tag_rows = tag_stmt
+            .query_map([&id], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?;
+        
+        let mut tags = Vec::new();
+        for tag_result in tag_rows {
+            tags.push(tag_result.map_err(|e| e.to_string())?);
+        }
+        
+        entries.push(LedgerEntry {
+            id,
+            account_id,
+            r#type,
+            amount,
+            date,
+            title,
+            category,
+            platform,
+            url,
+            merchant,
+            payment_method,
+            memo,
+            color,
+            tags,
+            created_at,
+            updated_at,
+        });
+    }
+    
+    Ok(entries)
+}
+
+#[tauri::command]
+fn get_ledger_entry(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    entry_id: String,
+) -> Result<Option<LedgerEntry>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let result: Result<(String, String, String, i64, String, String, String, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, String, String), rusqlite::Error> = conn.query_row(
+        "SELECT id, account_id, type, amount, date, title, category, platform, url, merchant, 
+                payment_method, memo, color, created_at, updated_at
+         FROM tbl_ledger_entry WHERE id = ?1",
+        [entry_id],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+                row.get(8)?,
+                row.get(9)?,
+                row.get(10)?,
+                row.get(11)?,
+                row.get(12)?,
+                row.get(13)?,
+                row.get(14)?,
+            ))
+        },
+    );
+    
+    match result {
+        Ok((
+            id, account_id, r#type, amount, date, title, category, platform, url, merchant,
+            payment_method, memo, color, created_at, updated_at,
+        )) => {
+            // 태그 조회
+            let mut tag_stmt = conn
+                .prepare("SELECT tag FROM tbl_ledger_tag WHERE entry_id = ?1 ORDER BY tag")
+                .map_err(|e| e.to_string())?;
+            let tag_rows = tag_stmt
+                .query_map([&id], |row| row.get::<_, String>(0))
+                .map_err(|e| e.to_string())?;
+            
+            let mut tags = Vec::new();
+            for tag_result in tag_rows {
+                tags.push(tag_result.map_err(|e| e.to_string())?);
+            }
+            
+            Ok(Some(LedgerEntry {
+                id,
+                account_id,
+                r#type,
+                amount,
+                date,
+                title,
+                category,
+                platform,
+                url,
+                merchant,
+                payment_method,
+                memo,
+                color,
+                tags,
+                created_at,
+                updated_at,
+            }))
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn list_ledger_history(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    entry_id: String,
+) -> Result<Vec<LedgerHistory>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    check_and_reset_expired_passwords(&conn)?;
+    
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, entry_id, action, snapshot_before, snapshot_after, created_at
+             FROM tbl_ledger_history 
+             WHERE entry_id = ?1
+             ORDER BY created_at DESC",
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let rows = stmt
+        .query_map([entry_id], |row| {
+            Ok(LedgerHistory {
+                id: row.get(0)?,
+                entry_id: row.get(1)?,
+                action: row.get(2)?,
+                snapshot_before: row.get(3)?,
+                snapshot_after: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut histories = Vec::new();
+    for row in rows {
+        histories.push(row.map_err(|e| e.to_string())?);
+    }
+    
+    Ok(histories)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1815,7 +2573,19 @@ pub fn run() {
             search_products,
             get_table_stats,
             truncate_table,
-            get_table_data
+            get_table_data,
+            create_ledger_account,
+            list_ledger_accounts,
+            verify_ledger_password,
+            update_ledger_password,
+            check_password_expiry,
+            delete_ledger_account,
+            create_ledger_entry,
+            update_ledger_entry,
+            delete_ledger_entry,
+            list_ledger_entries,
+            get_ledger_entry,
+            list_ledger_history
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

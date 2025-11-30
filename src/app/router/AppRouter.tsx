@@ -32,6 +32,8 @@ import { ExpenditureDashboardPage, ExpenditureOverviewPage } from "@pages/expend
 import { TransactionHeatmapPage } from "@pages/heatmap";
 import { SearchResultsPage } from "@pages/search";
 import { LedgerPage, LedgerEntryPage } from "@pages/ledger";
+import { LedgerAccountOnboarding } from "@features/ledger/account/ui";
+import { LedgerHistoryPanel } from "@features/ledger/history/ui";
 
 import type { DbStatus, HasUsersResponse, User, UserListResponse } from "@shared/api/types";
 
@@ -372,6 +374,18 @@ const RouterContent = () => {
         {/* 검색 */}
         <Route path="search" element={<SearchPage />} />
         
+        {/* 가계부 (독립 계정 시스템) */}
+        <Route path="ledger">
+          <Route index element={<LedgerPage />} />
+          <Route path="onboarding" element={<LedgerAccountOnboarding />} />
+          <Route path="account/:accountId">
+            <Route index element={<LedgerPage />} />
+            <Route path="new" element={<LedgerEntryPage />} />
+            <Route path="edit/:entryId" element={<LedgerEntryPage />} />
+            <Route path="history/:entryId" element={<LedgerHistoryPanel />} />
+          </Route>
+        </Route>
+        
         {/* 계정별 페이지 */}
         <Route path="account/:accountId">
           {/* 지출 분석 */}
@@ -404,22 +418,6 @@ const RouterContent = () => {
             element={
               <AccountPage accounts={accounts}>
                 {(account) => <TransactionHeatmapPage account={account} />}
-              </AccountPage>
-            } 
-          />
-          <Route 
-            path="ledger" 
-            element={
-              <AccountPage accounts={accounts}>
-                {(account) => <LedgerPage account={account} />}
-              </AccountPage>
-            } 
-          />
-          <Route 
-            path="ledger/entry" 
-            element={
-              <AccountPage accounts={accounts}>
-                {(account) => <LedgerEntryPage account={account} />}
               </AccountPage>
             } 
           />

@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { 
   ChevronLeft,
   ChevronRight,
@@ -12,28 +12,13 @@ import {
   X,
   List,
   FileText,
+  Edit2,
+  History,
 } from "lucide-react";
-import type { User } from "@shared/api/types";
-
-// 가계부 항목 타입
-interface LedgerEntry {
-  id: string;
-  type: "income" | "expense";
-  amount: number;
-  date: string;
-  title: string;
-  category: string;
-  platform?: "offline" | "online_shopping" | "social" | "app" | "subscription" | "etc";
-  url?: string;
-  merchant?: string;
-  quantity?: number;
-  unitPrice?: number;
-  paymentMethod?: string;
-  memo?: string;
-  tags: string[];
-  color?: string;
-  imageUrl?: string;
-}
+import { useLedgerEntries, useDeleteLedgerEntry } from "@features/ledger/entry/hooks";
+import { LedgerAccountSelector } from "@features/ledger/account/ui";
+import { useLedgerAccounts } from "@features/ledger/account/hooks";
+import type { LedgerEntry } from "@features/ledger/shared";
 
 // 카테고리 정의
 const EXPENSE_CATEGORIES = [
@@ -70,112 +55,25 @@ const COLORS = [
 
 type ViewMode = "fold" | "giro";
 
-interface LedgerPageProps {
-  account: User;
-}
-
-// 목업 데이터 생성
-const generateMockData = (): LedgerEntry[] => {
-  const now = new Date();
-  const entries: LedgerEntry[] = [];
-  
-  entries.push(
-    {
-      id: "1",
-      type: "income",
-      amount: 3500000,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-25`,
-      title: "월급",
-      category: "salary",
-      tags: ["정기"],
-      color: "green",
-      paymentMethod: "transfer",
-    },
-    {
-      id: "2",
-      type: "expense",
-      amount: 32000,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
-      title: "쿠팡 생필품",
-      category: "shopping",
-      platform: "online_shopping",
-      url: "https://www.coupang.com/...",
-      merchant: "쿠팡",
-      tags: ["생필품", "정기구매"],
-      color: "blue",
-      paymentMethod: "card",
-    },
-    {
-      id: "3",
-      type: "expense",
-      amount: 5500,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`,
-      title: "스타벅스 아메리카노",
-      category: "food",
-      platform: "offline",
-      merchant: "스타벅스 강남점",
-      tags: ["카페"],
-      paymentMethod: "card",
-    },
-    {
-      id: "4",
-      type: "expense",
-      amount: 15000,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(Math.max(1, now.getDate() - 1)).padStart(2, "0")}`,
-      title: "점심 식사",
-      category: "food",
-      platform: "offline",
-      merchant: "맛있는 식당",
-      tags: ["외식", "점심"],
-      paymentMethod: "card",
-    },
-    {
-      id: "5",
-      type: "expense",
-      amount: 2500,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(Math.max(1, now.getDate() - 1)).padStart(2, "0")}`,
-      title: "지하철",
-      category: "transport",
-      tags: ["출퇴근"],
-      paymentMethod: "card",
-    },
-    {
-      id: "6",
-      type: "income",
-      amount: 150000,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(Math.max(1, now.getDate() - 2)).padStart(2, "0")}`,
-      title: "프리랜서 작업",
-      category: "side",
-      tags: ["부업"],
-      color: "purple",
-      paymentMethod: "transfer",
-    },
-    {
-      id: "7",
-      type: "expense",
-      amount: 89000,
-      date: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(Math.max(1, now.getDate() - 3)).padStart(2, "0")}`,
-      title: "넷플릭스 연간 구독",
-      category: "leisure",
-      platform: "subscription",
-      tags: ["구독", "OTT"],
-      color: "red",
-      paymentMethod: "card",
-    },
-  );
-  
-  return entries;
-};
-
-export const LedgerPage = ({ account }: LedgerPageProps) => {
+export const LedgerPage = () => {
   const navigate = useNavigate();
-  const [entries, setEntries] = useState<LedgerEntry[]>(generateMockData);
+  const { accountId } = useParams<{ accountId: string }>();
+  const { data: accounts } = useLedgerAccounts();
+  const [selectedAccountId, setSelectedAccountId] = useState<string | undefined>(accountId);
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>("fold");
+  
+  const { data: entries = [], isLoading } = useLedgerEntries(
+    selectedAccountId || "",
+    selectedMonth
+  );
+  const deleteEntry = useDeleteLedgerEntry();
+  
+  const selectedAccount = accounts?.find((a) => a.id === selectedAccountId);
 
   // 월 포맷팅
   const formatMonthDisplay = (yearMonth: string): string => {
@@ -236,7 +134,7 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
     months.add(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
     return [...months].sort().reverse();
   }, [entries]);
-
+  
   // 누적 잔액 계산
   const entriesWithBalance = useMemo(() => {
     let runningBalance = 0;
@@ -246,6 +144,41 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
       return { ...entry, runningBalance };
     }).reverse();
   }, [filteredEntries]);
+
+  // 핸들러 함수들
+  const handleCreateAccount = () => {
+    navigate("/ledger/onboarding");
+  };
+  
+  const handleSelectAccount = (accountId: string) => {
+    setSelectedAccountId(accountId);
+    navigate(`/ledger/account/${accountId}`);
+  };
+  
+  const handleAddEntry = () => {
+    if (!selectedAccountId) return;
+    navigate(`/ledger/account/${selectedAccountId}/new`);
+  };
+
+  const handleEditEntry = (id: string) => {
+    if (!selectedAccountId) return;
+    navigate(`/ledger/account/${selectedAccountId}/edit/${id}`);
+  };
+
+  const handleViewHistory = (id: string) => {
+    if (!selectedAccountId) return;
+    navigate(`/ledger/account/${selectedAccountId}/history/${id}`);
+  };
+
+  const handleDeleteEntry = async (id: string) => {
+    if (confirm("이 항목을 삭제하시겠습니까?")) {
+      try {
+        await deleteEntry.mutateAsync(id);
+      } catch (err) {
+        alert("삭제에 실패했습니다: " + (err instanceof Error ? err.message : String(err)));
+      }
+    }
+  };
 
   const navigateMonth = (direction: -1 | 1) => {
     const currentIdx = availableMonths.indexOf(selectedMonth);
@@ -274,22 +207,38 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
     });
   };
 
-  const handleAddEntry = () => {
-    navigate(`/account/${account.id}/ledger/new`);
-  };
-
-  const handleDeleteEntry = (id: string) => {
-    if (confirm("이 항목을 삭제하시겠습니까?")) {
-      setEntries(prev => prev.filter(e => e.id !== id));
-    }
-  };
-
   const getCategoryInfo = (type: "income" | "expense", categoryId: string) => {
     const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     return categories.find(c => c.id === categoryId) || { label: categoryId, icon: "📋" };
   };
 
   const sortedDates = Object.keys(entriesByDate).sort().reverse();
+
+  // 계정 자동 선택 (useEffect로 처리하여 hooks 순서 보장)
+  useEffect(() => {
+    if (!selectedAccountId && accounts && accounts.length > 0) {
+      setSelectedAccountId(accounts[0].id);
+      navigate(`/ledger/account/${accounts[0].id}`);
+    }
+  }, [selectedAccountId, accounts, navigate]);
+
+  // 계정이 없을 때 렌더링
+  if (!selectedAccountId) {
+    return (
+      <div className="flex-1 h-full overflow-hidden bg-[#fdfbf7] font-mono flex flex-col items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-5xl mb-4 opacity-40">📒</div>
+          <p className="text-[#8b7355] mb-4">가계부 계정이 없습니다</p>
+          <button
+            onClick={handleCreateAccount}
+            className="px-6 py-3 bg-[#c49a1a] hover:bg-[#d4aa2a] text-white font-bold transition-colors"
+          >
+            첫 번째 계정 만들기
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 h-full overflow-hidden bg-[#fdfbf7] font-mono flex flex-col">
@@ -303,9 +252,11 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <h1 className="text-lg font-bold tracking-wide text-[#5c4d3c]">📒 가계부</h1>
-              <span className="text-xs text-[#8b7355] bg-[#d4c4a8]/50 px-2 py-0.5">
-                {account.alias}
-              </span>
+              <LedgerAccountSelector
+                selectedAccountId={selectedAccountId}
+                onSelectAccount={handleSelectAccount}
+                onCreateAccount={handleCreateAccount}
+              />
             </div>
             <button
               onClick={handleAddEntry}
@@ -403,7 +354,12 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
       {/* 거래 목록 */}
       <div className="relative flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          {sortedDates.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-16 px-6">
+              <div className="text-5xl mb-4 opacity-40 animate-pulse">📒</div>
+              <p className="text-[#8b7355]">로딩 중...</p>
+            </div>
+          ) : sortedDates.length === 0 ? (
             <div className="text-center py-16 px-6">
               <div className="text-5xl mb-4 opacity-40">📒</div>
               <p className="text-[#8b7355]">이 달의 기록이 없습니다</p>
@@ -505,14 +461,30 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
                                 {formatAmount(entry.amount, entry.type)}
                               </div>
                               
-                              {/* 삭제 버튼 */}
-                              <button
-                                onClick={() => handleDeleteEntry(entry.id)}
-                                className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-rose-100 transition-all"
-                                title="삭제"
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                              </button>
+                              {/* 액션 버튼 */}
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                <button
+                                  onClick={() => handleEditEntry(entry.id)}
+                                  className="p-1.5 hover:bg-blue-100 transition-all"
+                                  title="수정"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                                </button>
+                                <button
+                                  onClick={() => handleViewHistory(entry.id)}
+                                  className="p-1.5 hover:bg-[#c49a1a]/20 transition-all"
+                                  title="히스토리"
+                                >
+                                  <History className="w-3.5 h-3.5 text-[#8b7355]" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteEntry(entry.id)}
+                                  className="p-1.5 hover:bg-rose-100 transition-all"
+                                  title="삭제"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                </button>
+                              </div>
                             </div>
                           );
                         })}
@@ -591,13 +563,29 @@ export const LedgerPage = ({ account }: LedgerPageProps) => {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => handleDeleteEntry(entry.id)}
-                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-rose-100 transition-all flex-shrink-0"
-                            title="삭제"
-                          >
-                            <X className="w-3 h-3 text-rose-400" />
-                          </button>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0">
+                            <button
+                              onClick={() => handleEditEntry(entry.id)}
+                              className="p-1 hover:bg-blue-100 transition-all"
+                              title="수정"
+                            >
+                              <Edit2 className="w-3 h-3 text-blue-500" />
+                            </button>
+                            <button
+                              onClick={() => handleViewHistory(entry.id)}
+                              className="p-1 hover:bg-[#c49a1a]/20 transition-all"
+                              title="히스토리"
+                            >
+                              <History className="w-3 h-3 text-[#8b7355]" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEntry(entry.id)}
+                              className="p-1 hover:bg-rose-100 transition-all"
+                              title="삭제"
+                            >
+                              <X className="w-3 h-3 text-rose-400" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                       

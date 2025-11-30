@@ -56,3 +56,11 @@ export type { ColorPickerProps, ColorOption } from "./ColorPicker";
 // TagInput
 export { TagInput } from "./TagInput";
 export type { TagInputProps } from "./TagInput";
+
+// Modal
+export { RetroModal, RetroModalBody } from "./RetroModal";
+export type { RetroModalProps } from "./RetroModal";
+
+// PaymentListModal
+export { PaymentListModal } from "./PaymentListModal";
+export type { PaymentListModalProps } from "./PaymentListModal";

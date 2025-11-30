@@ -49,7 +49,7 @@ const HeroLayout = ({
         </div>
         <h2 className="text-4xl font-bold text-gray-900 font-serif tracking-tight">안녕 탐정님, 사건을 파헤쳐볼까요?</h2>
         <p className="text-base text-gray-700 leading-relaxed">
-          지출 탐정은 SQLite 파일 하나로 모든 영수증 단서를 보관합니다. 기존 사건 기록을 불러오거나, 새로운 수사 노트를
+          지출 탐정은 SQLite 파일 하나로 모든 영수증 단서를 보관합니다. 기존 기록을 불러오거나, 새로운 기록을
           만들고 첫 계정을 등록해보세요.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-center pt-4">
@@ -227,7 +227,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }, [status?.sizeBytes]);
 
   const renderLoading = () => (
-    <div className="relative flex flex-col h-full bg-[#fdfbf7] font-mono">
+    <div className="relative flex flex-col h-screen bg-[#fdfbf7] font-mono">
       {/* 배경 패턴 */}
       <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       <header className="relative h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">
@@ -249,7 +249,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
 
   if (!status.configured || !status.exists) {
     return (
-      <div className="flex flex-col h-full bg-[#fdfbf7]">
+      <div className="flex flex-col h-screen bg-[#fdfbf7]">
         <div className="flex-1 flex flex-col">
           <HeroLayout
             version={version}
@@ -265,7 +265,7 @@ export const SystemSettingsPage = ({ onReady }: Props) => {
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-[#fdfbf7] font-mono">
+    <div className="relative flex flex-col h-screen bg-[#fdfbf7] font-mono">
       {/* 배경 패턴 */}
       <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       <header className="relative h-16 border-b-2 border-gray-800 bg-[#f6f1e9] flex items-center px-6">

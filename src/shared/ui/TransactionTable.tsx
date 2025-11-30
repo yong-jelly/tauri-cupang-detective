@@ -64,18 +64,18 @@ export const TransactionTable = ({
   }
 
   return (
-    <div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse font-mono text-sm">
-          <thead>
+    <div className="relative">
+      <div className="overflow-x-auto overflow-y-auto">
+        <table className="w-full text-left border-collapse font-mono text-sm table-fixed">
+          <thead className="sticky top-0 z-10">
             <tr className="border-b-2 border-gray-800 bg-[#fdfbf7]">
-              <th className={`${compact ? "p-3" : "p-4"} font-bold text-gray-800 w-32 border-r border-gray-200`}>
+              <th className={`${compact ? "p-3" : "p-4"} font-bold text-gray-800 w-28 min-w-28 border-r border-gray-200 bg-[#fdfbf7]`}>
                 날짜
               </th>
-              <th className={`${compact ? "p-3" : "p-4"} font-bold text-gray-800 border-r border-gray-200`}>
+              <th className={`${compact ? "p-3" : "p-4"} font-bold text-gray-800 border-r border-gray-200 bg-[#fdfbf7]`}>
                 거래 내역
               </th>
-              <th className={`${compact ? "p-3" : "p-4"} font-bold text-gray-800 w-40 text-right`}>
+              <th className={`${compact ? "p-3" : "p-4"} font-bold text-gray-800 w-32 min-w-32 text-right bg-[#fdfbf7] pr-5`}>
                 금액
               </th>
             </tr>
@@ -93,25 +93,25 @@ export const TransactionTable = ({
                     } hover:bg-yellow-50/70`}
                     onClick={() => togglePayment(payment.id)}
                   >
-                    <td className={`${compact ? "px-3" : "px-4"} border-r border-gray-200 text-gray-600 align-middle`}>
+                    <td className={`${compact ? "px-3" : "px-4"} border-r border-gray-200 text-gray-600 align-middle whitespace-nowrap`}>
                       {payment.paid_at.substring(0, 10)}
                     </td>
-                    <td className={`${compact ? "px-3" : "px-4"} border-r border-gray-200 text-gray-900 font-semibold align-middle`}>
-                      <div className="flex items-center gap-2">
+                    <td className={`${compact ? "px-3" : "px-4"} border-r border-gray-200 text-gray-900 font-semibold align-middle overflow-hidden`}>
+                      <div className="flex items-center gap-2 min-w-0">
                         {isExpanded ? (
                           <ChevronDown className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         ) : (
                           <ChevronRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         )}
-                        <span className="truncate">{displayName}</span>
+                        <span className="truncate min-w-0" title={displayName}>{displayName}</span>
                         {payment.items.length > 1 && (
-                          <span className="ml-2 text-xs text-gray-500 font-normal flex-shrink-0">
+                          <span className="text-xs text-gray-500 font-normal flex-shrink-0 whitespace-nowrap">
                             외 {payment.items.length - 1}건
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className={`${compact ? "px-3" : "px-4"} text-right text-gray-900 font-bold align-middle`}>
+                    <td className={`${compact ? "px-3" : "px-4"} text-right text-gray-900 font-bold align-middle whitespace-nowrap pr-5`}>
                       {formatAmount(payment.total_amount)}
                     </td>
                   </tr>

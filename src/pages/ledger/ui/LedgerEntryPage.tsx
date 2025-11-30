@@ -1,7 +1,6 @@
-import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { X, ChevronLeft, ChevronRight, Check, Loader2 } from "lucide-react";
-import type { User } from "@shared/api/types";
 import { 
   SelectableChip, 
   SelectableCardGroup, 
@@ -9,23 +8,8 @@ import {
   TagInput,
   type ColorOption 
 } from "@shared/ui";
-
-// 가계부 항목 타입
-interface LedgerEntry {
-  id: string;
-  type: "income" | "expense";
-  amount: number;
-  date: string;
-  title: string;
-  category: string;
-  platform?: "offline" | "online_shopping" | "social" | "app" | "subscription" | "etc";
-  url?: string;
-  merchant?: string;
-  paymentMethod?: string;
-  memo?: string;
-  tags: string[];
-  color?: string;
-}
+import { useLedgerEntry, useCreateLedgerEntry, useUpdateLedgerEntry } from "@features/ledger/entry/hooks";
+import type { LedgerEntryInput } from "@features/ledger/shared";
 
 type Step = "type" | "basic" | "category" | "extra" | "confirm";
 
@@ -111,14 +95,16 @@ const COLORS: ColorOption[] = [
   { id: "purple", color: "#9333ea", label: "보라" },
 ];
 
-interface LedgerEntryPageProps {
-  account: User;
-}
-
-export const LedgerEntryPage = ({ account }: LedgerEntryPageProps) => {
+export const LedgerEntryPage = () => {
   const navigate = useNavigate();
+  const { accountId, entryId } = useParams<{ accountId: string; entryId?: string }>();
+  const isEditMode = !!entryId;
   
-  const [step, setStep] = useState<Step>("type");
+  const { data: existingEntry, isLoading: loadingEntry } = useLedgerEntry(entryId);
+  const createEntry = useCreateLedgerEntry();
+  const updateEntry = useUpdateLedgerEntry();
+  
+  const [step, setStep] = useState<Step>(isEditMode ? "basic" : "type");
   const [saving, setSaving] = useState(false);
   
   // 폼 데이터
@@ -136,6 +122,40 @@ export const LedgerEntryPage = ({ account }: LedgerEntryPageProps) => {
   const [merchant, setMerchant] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [memo, setMemo] = useState("");
+  
+  // 수정 모드일 때 기존 데이터 로드
+  useEffect(() => {
+    if (existingEntry) {
+      setType(existingEntry.type);
+      setAmount(existingEntry.amount.toLocaleString());
+      setDate(existingEntry.date);
+      setTitle(existingEntry.title);
+      setCategory(existingEntry.category);
+      setTags(existingEntry.tags || []);
+      setColor(existingEntry.color || "none");
+      setPlatform(existingEntry.platform || "");
+      setUrl(existingEntry.url || "");
+      setMerchant(existingEntry.merchant || "");
+      setPaymentMethod(existingEntry.paymentMethod || "");
+      setMemo(existingEntry.memo || "");
+    }
+  }, [existingEntry]);
+  
+  if (!accountId) {
+    return <div>계정 ID가 필요합니다.</div>;
+  }
+  
+  if (isEditMode && loadingEntry) {
+    return (
+      <div className="flex-1 h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#c49a1a]" />
+      </div>
+    );
+  }
+  
+  if (isEditMode && !existingEntry) {
+    return <div>항목을 찾을 수 없습니다.</div>;
+  }
 
   const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   
@@ -185,34 +205,39 @@ export const LedgerEntryPage = ({ account }: LedgerEntryPageProps) => {
   };
 
   const handleSave = async () => {
-    if (!type || !title || !amount || !category) return;
+    if (!type || !title || !amount || !category || !accountId) return;
     
     setSaving(true);
     
-    // 목업: 저장 시뮬레이션
-    const entry: LedgerEntry = {
-      id: Date.now().toString(),
-      type,
-      amount: parseInt(amount.replace(/,/g, "")),
-      date,
-      title,
-      category,
-      platform: platform as LedgerEntry["platform"] || undefined,
-      url: url || undefined,
-      merchant: merchant || undefined,
-      paymentMethod: paymentMethod || undefined,
-      memo: memo || undefined,
-      tags,
-      color: color !== "none" ? color : undefined,
-    };
+    try {
+      const entry: LedgerEntryInput = {
+        accountId,
+        type,
+        amount: parseInt(amount.replace(/,/g, "")),
+        date,
+        title,
+        category,
+        platform: platform || undefined,
+        url: url || undefined,
+        merchant: merchant || undefined,
+        paymentMethod: paymentMethod || undefined,
+        memo: memo || undefined,
+        tags,
+        color: color !== "none" ? color : undefined,
+      };
 
-    console.log("저장된 항목:", entry);
-    
-    // 시뮬레이션 딜레이
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setSaving(false);
-    navigate(`/account/${account.id}/ledger`);
+      if (isEditMode && entryId) {
+        await updateEntry.mutateAsync({ entryId, entry });
+      } else {
+        await createEntry.mutateAsync({ accountId, entry });
+      }
+      
+      navigate(`/ledger/account/${accountId}`);
+    } catch (err) {
+      alert("저장에 실패했습니다: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const formatAmount = (val: string): string => {
@@ -237,11 +262,12 @@ export const LedgerEntryPage = ({ account }: LedgerEntryPageProps) => {
       
       {/* 헤더 */}
       <div className="relative flex-shrink-0 bg-[#2d2416] text-[#fffef0] px-6 py-4">
-        <div className="max-w-2xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold tracking-wide uppercase">수기 입력</h1>
-            <p className="text-xs text-[#8b7355] mt-0.5">{account.alias}</p>
-          </div>
+          <div className="max-w-2xl mx-auto flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold tracking-wide uppercase">
+                {isEditMode ? "항목 수정" : "수기 입력"}
+              </h1>
+            </div>
           <button
             onClick={() => navigate(-1)}
             className="p-2 hover:bg-white/10 rounded transition-colors"
