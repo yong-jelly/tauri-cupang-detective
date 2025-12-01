@@ -73,7 +73,8 @@ export const LedgerPage = () => {
   );
   const deleteEntry = useDeleteLedgerEntry();
   
-  const selectedAccount = accounts?.find((a) => a.id === selectedAccountId);
+  // 선택된 계정 정보 (추후 사용 예정)
+  void accounts?.find((a) => a.id === selectedAccountId);
 
   // 월 포맷팅
   const formatMonthDisplay = (yearMonth: string): string => {

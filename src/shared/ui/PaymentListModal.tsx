@@ -3,6 +3,7 @@ import { ShoppingBag } from "lucide-react";
 import { RetroModal, RetroModalBody } from "./RetroModal";
 import { TransactionTable } from "./TransactionTable";
 import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
+import type { AccountProvider } from "@shared/api/types";
 
 export interface PaymentListModalProps {
   /** 모달 열림 여부 */
@@ -11,6 +12,8 @@ export interface PaymentListModalProps {
   onClose: () => void;
   /** 결제 목록 */
   payments: UnifiedPayment[];
+  /** 플랫폼 provider (메타데이터 관리용, 없으면 payments에서 자동 추출) */
+  provider?: AccountProvider;
   /** 모달 제목 */
   title?: string;
   /** 모달 서브타이틀 */
@@ -50,10 +53,20 @@ export const PaymentListModal = ({
   isOpen,
   onClose,
   payments,
+  provider: providerProp,
   title = "구매 내역",
   subtitle,
   emptyMessage = "해당 조건에 맞는 구매 내역이 없습니다.",
 }: PaymentListModalProps) => {
+  // provider가 명시적으로 전달되지 않으면 payments에서 추출
+  const provider = useMemo(() => {
+    if (providerProp) return providerProp;
+    if (payments.length > 0 && payments[0].provider) {
+      return payments[0].provider;
+    }
+    return undefined;
+  }, [providerProp, payments]);
+
   // 헤더에 표시할 요약 통계 계산 (건수, 금액, 날짜 범위)
   const summary = useMemo(() => {
     if (payments.length === 0) return null;
@@ -108,6 +121,7 @@ export const PaymentListModal = ({
       <RetroModalBody padding={false}>
         <TransactionTable
           payments={payments}
+          provider={provider}
           emptyMessage={emptyMessage}
           compact
         />

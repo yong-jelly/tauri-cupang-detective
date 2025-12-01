@@ -1,9 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  listLedgerEntries,
-  deleteLedgerEntry,
-  type LedgerEntry,
-} from "../../shared";
+import { listLedgerEntries, deleteLedgerEntry } from "../../shared";
 
 export function useLedgerEntries(accountId: string, yearMonth: string) {
   return useQuery({

@@ -3,7 +3,6 @@ import {
   listLedgerAccounts,
   createLedgerAccount,
   deleteLedgerAccount,
-  type LedgerAccount,
 } from "../../shared";
 
 export function useLedgerAccounts() {

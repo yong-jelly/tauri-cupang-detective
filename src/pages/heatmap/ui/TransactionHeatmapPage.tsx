@@ -259,6 +259,7 @@ export const TransactionHeatmapPage = ({ account }: TransactionHeatmapPageProps)
         products.push({
           id: payment.payment_id,
           item: {
+            id: 0,
             line_no: 1,
             product_name: payment.product_name || payment.merchant_name,
             quantity: 1,

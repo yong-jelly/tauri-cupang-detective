@@ -1,10 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Loader2, ChevronDown, ChevronRight, Receipt } from "lucide-react";
-import type { User, NaverPaymentListItem, CoupangPaymentListItem } from "@shared/api/types";
+import { Loader2, ChevronDown, ChevronRight, Receipt, Tag, Star } from "lucide-react";
+import type { User, NaverPaymentListItem, CoupangPaymentListItem, AccountProvider } from "@shared/api/types";
 import type { UnifiedPayment } from "@shared/lib/unifiedPayment";
 import { parseNaverPayments, parseCoupangPayments } from "@shared/lib/paymentParsers";
+import { ProductMetaModal, useProductMetaSummaries } from "@features/product-meta";
 import React from "react";
+
+// 모달에서 사용할 아이템 정보
+interface SelectedItem {
+  provider: AccountProvider;
+  itemId: number;
+  productName: string;
+}
 
 interface TransactionListPageProps {
   account: User;
@@ -16,6 +24,35 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
   const [error, setError] = useState<string | null>(null);
   const [expandedPayments, setExpandedPayments] = useState<Set<number>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  
+  // 상품 메타데이터 모달 상태
+  const [metaModalOpen, setMetaModalOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null);
+  
+  // 상품 메타데이터 요약 정보
+  const { getSummary, refresh: refreshSummaries } = useProductMetaSummaries(account.provider);
+
+  // 상품 메타데이터 모달 열기
+  const openMetaModal = useCallback((itemId: number, productName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedItem({
+      provider: account.provider,
+      itemId,
+      productName,
+    });
+    setMetaModalOpen(true);
+  }, [account.provider]);
+
+  // 상품 메타데이터 모달 닫기
+  const closeMetaModal = useCallback(() => {
+    setMetaModalOpen(false);
+    setSelectedItem(null);
+  }, []);
+
+  // 메타데이터 저장 후 콜백
+  const handleMetaSaved = useCallback(() => {
+    refreshSummaries();
+  }, [refreshSummaries]);
 
   const loadPayments = useCallback(async () => {
     setLoading(true);
@@ -316,17 +353,50 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
                                               )}
                                             </div>
                                           </div>
-                                          <div className="text-right">
-                                            {item.line_amount && (
-                                              <div className="font-bold text-gray-900">
-                                                {formatAmount(item.line_amount)}
-                                              </div>
-                                            )}
-                                            {item.rest_amount && item.rest_amount > 0 && (
-                                              <div className="text-xs text-gray-500">
-                                                남은 금액: {formatAmount(item.rest_amount)}
-                                              </div>
-                                            )}
+                                          <div className="flex items-start gap-3">
+                                            {/* 태그/메모 관리 버튼 */}
+                                            {(() => {
+                                              const summary = getSummary(item.id);
+                                              const hasMeta = !!summary;
+                                              const hasRating = summary?.rating != null;
+                                              
+                                              return (
+                                                <button
+                                                  type="button"
+                                                  onClick={(e) => openMetaModal(item.id, item.product_name, e)}
+                                                  className={`inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium transition-colors ${
+                                                    hasMeta
+                                                      ? "bg-[#c49a1a] border border-[#c49a1a] text-white hover:bg-[#a6820f] shadow-sm"
+                                                      : "border border-[#c49a1a]/50 text-[#c49a1a] hover:bg-[#c49a1a]/10 hover:border-[#c49a1a]"
+                                                  }`}
+                                                  title="태그/메모 관리"
+                                                >
+                                                  {hasRating ? (
+                                                    <>
+                                                      <Star className="w-3 h-3 fill-current" />
+                                                      <span>{summary.rating}</span>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Tag className="w-3 h-3" />
+                                                      <span>관리</span>
+                                                    </>
+                                                  )}
+                                                </button>
+                                              );
+                                            })()}
+                                            <div className="text-right">
+                                              {item.line_amount && (
+                                                <div className="font-bold text-gray-900">
+                                                  {formatAmount(item.line_amount)}
+                                                </div>
+                                              )}
+                                              {item.rest_amount && item.rest_amount > 0 && (
+                                                <div className="text-xs text-gray-500">
+                                                  남은 금액: {formatAmount(item.rest_amount)}
+                                                </div>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
                                       ))
@@ -372,6 +442,18 @@ export const TransactionListPage = ({ account }: TransactionListPageProps) => {
           })}
         </div>
       </div>
+
+      {/* 상품 메타데이터 모달 */}
+      {selectedItem && (
+        <ProductMetaModal
+          isOpen={metaModalOpen}
+          onClose={closeMetaModal}
+          provider={selectedItem.provider}
+          itemId={selectedItem.itemId}
+          productName={selectedItem.productName}
+          onSaved={handleMetaSaved}
+        />
+      )}
     </div>
   );
 };

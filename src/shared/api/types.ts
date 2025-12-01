@@ -36,6 +36,7 @@ export type AccountProvider = "naver" | "coupang";
 export type CredentialMap = Record<string, string>;
 
 export type PaymentItem = {
+  id: number;
   lineNo: number;
   productName: string;
   imageUrl?: string | null;
@@ -66,6 +67,7 @@ export type NaverPaymentListItem = {
 };
 
 export type CoupangPaymentItem = {
+  id: number;
   lineNo: number;
   productId?: string | null;
   vendorItemId?: string | null;
@@ -121,5 +123,44 @@ export type SearchResultItem = {
 export type SearchResponse = {
   items: SearchResultItem[];
   total: number;
+};
+
+// ========== 상품 메타데이터 관련 타입 ==========
+
+export type Category = {
+  id: string;
+  name: string;
+  color?: string | null;
+  createdAt: string;
+};
+
+export type ProductMeta = {
+  id: string;
+  provider: AccountProvider;
+  itemId: number;
+  memo?: string | null;
+  url?: string | null;
+  rating?: number | null;
+  tags: string[];
+  categories: Category[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductMetaInput = {
+  memo?: string | null;
+  url?: string | null;
+  rating?: number | null;
+  tags: string[];
+  categoryIds: string[];
+};
+
+export type ProductMetaSummary = {
+  itemId: number;
+  hasTags: boolean;
+  hasCategories: boolean;
+  hasMemo: boolean;
+  hasUrl: boolean;
+  rating: number | null;
 };
 

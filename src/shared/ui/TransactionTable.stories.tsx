@@ -78,6 +78,7 @@ type Story = StoryObj<typeof TransactionTable>;
 const mockPayments: UnifiedPayment[] = [
   {
     id: 1,
+    provider: "naver",
     payment_id: "PAY001",
     paid_at: "2024-03-15T10:30:00",
     total_amount: 45000,
@@ -85,6 +86,7 @@ const mockPayments: UnifiedPayment[] = [
     product_name: "아메리카노 외 2건",
     items: [
       {
+        id: 101,
         line_no: 1,
         product_name: "아이스 아메리카노",
         quantity: 2,
@@ -92,6 +94,7 @@ const mockPayments: UnifiedPayment[] = [
         line_amount: 9000,
       },
       {
+        id: 102,
         line_no: 2,
         product_name: "카페라떼",
         quantity: 1,
@@ -99,6 +102,7 @@ const mockPayments: UnifiedPayment[] = [
         line_amount: 5000,
       },
       {
+        id: 103,
         line_no: 3,
         product_name: "치즈케이크",
         quantity: 1,
@@ -109,6 +113,7 @@ const mockPayments: UnifiedPayment[] = [
   },
   {
     id: 2,
+    provider: "coupang",
     payment_id: "PAY002",
     paid_at: "2024-03-14T18:45:00",
     total_amount: 89000,
@@ -116,6 +121,7 @@ const mockPayments: UnifiedPayment[] = [
     product_name: "무선 이어폰",
     items: [
       {
+        id: 201,
         line_no: 1,
         product_name: "삼성 갤럭시 버즈2",
         quantity: 1,
@@ -128,6 +134,7 @@ const mockPayments: UnifiedPayment[] = [
   },
   {
     id: 3,
+    provider: "naver",
     payment_id: "PAY003",
     paid_at: "2024-03-13T12:00:00",
     total_amount: 12500,
@@ -135,6 +142,7 @@ const mockPayments: UnifiedPayment[] = [
     product_name: "김치찌개 정식",
     items: [
       {
+        id: 301,
         line_no: 1,
         product_name: "김치찌개 정식",
         quantity: 1,
@@ -142,6 +150,7 @@ const mockPayments: UnifiedPayment[] = [
         line_amount: 9000,
       },
       {
+        id: 302,
         line_no: 2,
         product_name: "공기밥 추가",
         quantity: 1,
@@ -149,6 +158,7 @@ const mockPayments: UnifiedPayment[] = [
         line_amount: 1000,
       },
       {
+        id: 303,
         line_no: 3,
         product_name: "배달팁",
         quantity: 1,
@@ -159,6 +169,7 @@ const mockPayments: UnifiedPayment[] = [
   },
   {
     id: 4,
+    provider: "coupang",
     payment_id: "PAY004",
     paid_at: "2024-03-12T09:15:00",
     total_amount: 156000,
@@ -166,6 +177,7 @@ const mockPayments: UnifiedPayment[] = [
     product_name: "스킨케어 세트",
     items: [
       {
+        id: 401,
         line_no: 1,
         product_name: "토너",
         quantity: 1,
@@ -174,6 +186,7 @@ const mockPayments: UnifiedPayment[] = [
         brand_name: "이니스프리",
       },
       {
+        id: 402,
         line_no: 2,
         product_name: "세럼",
         quantity: 1,
@@ -182,6 +195,7 @@ const mockPayments: UnifiedPayment[] = [
         brand_name: "이니스프리",
       },
       {
+        id: 403,
         line_no: 3,
         product_name: "수분크림",
         quantity: 2,
@@ -193,6 +207,7 @@ const mockPayments: UnifiedPayment[] = [
   },
   {
     id: 5,
+    provider: "naver",
     payment_id: "PAY005",
     paid_at: "2024-03-11T20:30:00",
     total_amount: 35000,
@@ -207,6 +222,7 @@ const manyPayments: UnifiedPayment[] = [
   ...mockPayments,
   {
     id: 6,
+    provider: "naver",
     payment_id: "PAY006",
     paid_at: "2024-03-10T14:00:00",
     total_amount: 23000,
@@ -214,6 +230,7 @@ const manyPayments: UnifiedPayment[] = [
     product_name: "책 구매",
     items: [
       {
+        id: 601,
         line_no: 1,
         product_name: "클린 코드",
         quantity: 1,
@@ -224,6 +241,7 @@ const manyPayments: UnifiedPayment[] = [
   },
   {
     id: 7,
+    provider: "naver",
     payment_id: "PAY007",
     paid_at: "2024-03-09T11:30:00",
     total_amount: 8500,
@@ -231,6 +249,7 @@ const manyPayments: UnifiedPayment[] = [
     product_name: "아메리카노",
     items: [
       {
+        id: 701,
         line_no: 1,
         product_name: "아이스 아메리카노 (L)",
         quantity: 2,
@@ -241,6 +260,7 @@ const manyPayments: UnifiedPayment[] = [
   },
   {
     id: 8,
+    provider: "coupang",
     payment_id: "PAY008",
     paid_at: "2024-03-08T19:00:00",
     total_amount: 67000,
@@ -248,6 +268,7 @@ const manyPayments: UnifiedPayment[] = [
     product_name: "영화 관람",
     items: [
       {
+        id: 801,
         line_no: 1,
         product_name: "듄: 파트2 (IMAX)",
         quantity: 2,
@@ -255,6 +276,7 @@ const manyPayments: UnifiedPayment[] = [
         line_amount: 36000,
       },
       {
+        id: 802,
         line_no: 2,
         product_name: "콤보 세트",
         quantity: 1,

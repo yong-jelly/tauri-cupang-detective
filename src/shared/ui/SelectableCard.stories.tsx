@@ -201,11 +201,11 @@ export const TypeSelect: Story = {
   },
 };
 
-// SelectableCardGroup 스토리
-const groupMeta: Meta<typeof SelectableCardGroup> = {
+// SelectableCardGroup 스토리용 메타 (default export와 별도)
+void ({
   title: "Shared/UI/SelectableCardGroup",
   component: SelectableCardGroup,
-};
+} satisfies Meta<typeof SelectableCardGroup>);
 
 /** SelectableCardGroup: 지출 카테고리 */
 export const ExpenseCategoryGroup: Story = {

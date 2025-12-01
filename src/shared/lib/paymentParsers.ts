@@ -17,6 +17,7 @@ import type { UnifiedPayment, UnifiedPaymentItem } from "./unifiedPayment";
  * 네이버 결제 아이템을 공통 형식으로 변환
  */
 const parseNaverPaymentItem = (item: PaymentItem): UnifiedPaymentItem => ({
+  id: item.id,
   line_no: item.lineNo,
   product_name: item.productName,
   image_url: item.imageUrl ?? undefined,
@@ -32,6 +33,7 @@ const parseNaverPaymentItem = (item: PaymentItem): UnifiedPaymentItem => ({
  * 쿠팡 결제 아이템을 공통 형식으로 변환
  */
 const parseCoupangPaymentItem = (item: CoupangPaymentItem): UnifiedPaymentItem => ({
+  id: item.id,
   line_no: item.lineNo,
   product_id: item.productId ?? undefined,
   product_name: item.productName,

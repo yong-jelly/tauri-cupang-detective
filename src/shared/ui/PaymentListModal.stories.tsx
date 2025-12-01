@@ -88,7 +88,7 @@ const mockSmallPayments: UnifiedPayment[] = [
     merchant_name: "스타벅스",
     product_name: "아이스 아메리카노",
     items: [
-      { line_no: 1, product_name: "아이스 아메리카노", quantity: 1, unit_price: 4500, line_amount: 4500 },
+      { id: 101, line_no: 1, product_name: "아이스 아메리카노", quantity: 1, unit_price: 4500, line_amount: 4500 },
     ],
   },
   {
@@ -100,8 +100,8 @@ const mockSmallPayments: UnifiedPayment[] = [
     merchant_name: "이디야커피",
     product_name: "카페라떼 외 1건",
     items: [
-      { line_no: 1, product_name: "카페라떼", quantity: 1, unit_price: 4500, line_amount: 4500 },
-      { line_no: 2, product_name: "쿠키", quantity: 1, unit_price: 4000, line_amount: 4000 },
+      { id: 102, line_no: 1, product_name: "카페라떼", quantity: 1, unit_price: 4500, line_amount: 4500 },
+      { id: 103, line_no: 2, product_name: "쿠키", quantity: 1, unit_price: 4000, line_amount: 4000 },
     ],
   },
   {
@@ -113,9 +113,9 @@ const mockSmallPayments: UnifiedPayment[] = [
     merchant_name: "GS25",
     product_name: "편의점 결제",
     items: [
-      { line_no: 1, product_name: "삼각김밥", quantity: 2, unit_price: 1400, line_amount: 2800 },
-      { line_no: 2, product_name: "컵라면", quantity: 1, unit_price: 1600, line_amount: 1600 },
-      { line_no: 3, product_name: "음료", quantity: 1, unit_price: 1800, line_amount: 1800 },
+      { id: 104, line_no: 1, product_name: "삼각김밥", quantity: 2, unit_price: 1400, line_amount: 2800 },
+      { id: 105, line_no: 2, product_name: "컵라면", quantity: 1, unit_price: 1600, line_amount: 1600 },
+      { id: 106, line_no: 3, product_name: "음료", quantity: 1, unit_price: 1800, line_amount: 1800 },
     ],
   },
   {
@@ -127,8 +127,8 @@ const mockSmallPayments: UnifiedPayment[] = [
     merchant_name: "파리바게트",
     product_name: "빵",
     items: [
-      { line_no: 1, product_name: "소보로빵", quantity: 1, unit_price: 2000, line_amount: 2000 },
-      { line_no: 2, product_name: "단팥빵", quantity: 1, unit_price: 1500, line_amount: 1500 },
+      { id: 107, line_no: 1, product_name: "소보로빵", quantity: 1, unit_price: 2000, line_amount: 2000 },
+      { id: 108, line_no: 2, product_name: "단팥빵", quantity: 1, unit_price: 1500, line_amount: 1500 },
     ],
   },
   {
@@ -140,9 +140,9 @@ const mockSmallPayments: UnifiedPayment[] = [
     merchant_name: "다이소",
     product_name: "생활용품",
     items: [
-      { line_no: 1, product_name: "물티슈", quantity: 2, unit_price: 2000, line_amount: 4000 },
-      { line_no: 2, product_name: "메모지", quantity: 3, unit_price: 1000, line_amount: 3000 },
-      { line_no: 3, product_name: "볼펜", quantity: 2, unit_price: 1400, line_amount: 2800 },
+      { id: 109, line_no: 1, product_name: "물티슈", quantity: 2, unit_price: 2000, line_amount: 4000 },
+      { id: 110, line_no: 2, product_name: "메모지", quantity: 3, unit_price: 1000, line_amount: 3000 },
+      { id: 111, line_no: 3, product_name: "볼펜", quantity: 2, unit_price: 1400, line_amount: 2800 },
     ],
   },
 ];
@@ -158,8 +158,8 @@ const mockMediumPayments: UnifiedPayment[] = [
     merchant_name: "쿠팡",
     product_name: "생활용품 세트",
     items: [
-      { line_no: 1, product_name: "세제 대용량", quantity: 1, unit_price: 15000, line_amount: 15000, brand_name: "피죤" },
-      { line_no: 2, product_name: "섬유유연제", quantity: 2, unit_price: 10000, line_amount: 20000, brand_name: "다우니" },
+      { id: 201, line_no: 1, product_name: "세제 대용량", quantity: 1, unit_price: 15000, line_amount: 15000, brand_name: "피죤" },
+      { id: 202, line_no: 2, product_name: "섬유유연제", quantity: 2, unit_price: 10000, line_amount: 20000, brand_name: "다우니" },
     ],
   },
   {
@@ -171,8 +171,8 @@ const mockMediumPayments: UnifiedPayment[] = [
     merchant_name: "올리브영",
     product_name: "스킨케어",
     items: [
-      { line_no: 1, product_name: "토너", quantity: 1, unit_price: 18000, line_amount: 18000, brand_name: "이니스프리" },
-      { line_no: 2, product_name: "수분크림", quantity: 1, unit_price: 24000, line_amount: 24000, brand_name: "이니스프리" },
+      { id: 203, line_no: 1, product_name: "토너", quantity: 1, unit_price: 18000, line_amount: 18000, brand_name: "이니스프리" },
+      { id: 204, line_no: 2, product_name: "수분크림", quantity: 1, unit_price: 24000, line_amount: 24000, brand_name: "이니스프리" },
     ],
   },
   {
@@ -184,8 +184,8 @@ const mockMediumPayments: UnifiedPayment[] = [
     merchant_name: "쿠팡",
     product_name: "간식 세트",
     items: [
-      { line_no: 1, product_name: "과자 선물세트", quantity: 1, unit_price: 28000, line_amount: 28000 },
-      { line_no: 2, product_name: "초콜릿", quantity: 2, unit_price: 10250, line_amount: 20500 },
+      { id: 205, line_no: 1, product_name: "과자 선물세트", quantity: 1, unit_price: 28000, line_amount: 28000 },
+      { id: 206, line_no: 2, product_name: "초콜릿", quantity: 2, unit_price: 10250, line_amount: 20500 },
     ],
   },
 ];
@@ -202,6 +202,7 @@ const mockLargePayments: UnifiedPayment[] = [
     product_name: "전자제품",
     items: [
       { 
+        id: 301,
         line_no: 1, 
         product_name: "삼성 갤럭시 버즈2", 
         quantity: 1, 
@@ -211,6 +212,7 @@ const mockLargePayments: UnifiedPayment[] = [
         image_url: "https://via.placeholder.com/100x100?text=Buds"
       },
       { 
+        id: 302,
         line_no: 2, 
         product_name: "충전 케이블 3m", 
         quantity: 2, 
@@ -218,6 +220,7 @@ const mockLargePayments: UnifiedPayment[] = [
         line_amount: 30000 
       },
       { 
+        id: 303,
         line_no: 3, 
         product_name: "케이스", 
         quantity: 1, 
@@ -236,6 +239,7 @@ const mockLargePayments: UnifiedPayment[] = [
     product_name: "키보드",
     items: [
       { 
+        id: 304,
         line_no: 1, 
         product_name: "로지텍 MX Keys Mini", 
         quantity: 1, 
@@ -245,6 +249,7 @@ const mockLargePayments: UnifiedPayment[] = [
         image_url: "https://via.placeholder.com/100x100?text=Keyboard"
       },
       { 
+        id: 305,
         line_no: 2, 
         product_name: "로지텍 MX Master 3", 
         quantity: 1, 
@@ -260,7 +265,7 @@ const mockLargePayments: UnifiedPayment[] = [
 // 많은 데이터 (페이지네이션 테스트용)
 const manyPayments: UnifiedPayment[] = Array.from({ length: 25 }, (_, i) => ({
   id: 100 + i,
-  provider: i % 2 === 0 ? "naver" : "coupang",
+  provider: i % 2 === 0 ? "naver" : "coupang" as const,
   payment_id: `PAY${String(100 + i).padStart(3, "0")}`,
   paid_at: `2024-03-${String(15 - Math.floor(i / 3)).padStart(2, "0")}T${String(8 + i % 12).padStart(2, "0")}:00:00`,
   total_amount: 5000 + (i * 500),
@@ -268,6 +273,7 @@ const manyPayments: UnifiedPayment[] = Array.from({ length: 25 }, (_, i) => ({
   product_name: ["커피", "음료", "간식", "편의점 결제", "베이커리"][i % 5],
   items: [
     { 
+      id: 1000 + i,
       line_no: 1, 
       product_name: ["아메리카노", "카페라떼", "케이크", "삼각김밥", "빵"][i % 5], 
       quantity: 1 + (i % 3), 
@@ -396,8 +402,8 @@ const mockLongNamePayments: UnifiedPayment[] = [
     merchant_name: "쿠팡",
     product_name: "[특가세일] 삼성전자 갤럭시 워치6 클래식 47mm 블루투스 모델 실버 스마트워치 + 정품 가죽 스트랩 세트 외 3건",
     items: [
-      { line_no: 1, product_name: "[특가세일] 삼성전자 갤럭시 워치6 클래식 47mm 블루투스 모델 실버 스마트워치", quantity: 1, unit_price: 35000, line_amount: 35000 },
-      { line_no: 2, product_name: "정품 가죽 스트랩", quantity: 1, unit_price: 10000, line_amount: 10000 },
+      { id: 401, line_no: 1, product_name: "[특가세일] 삼성전자 갤럭시 워치6 클래식 47mm 블루투스 모델 실버 스마트워치", quantity: 1, unit_price: 35000, line_amount: 35000 },
+      { id: 402, line_no: 2, product_name: "정품 가죽 스트랩", quantity: 1, unit_price: 10000, line_amount: 10000 },
     ],
   },
   {
@@ -409,7 +415,7 @@ const mockLongNamePayments: UnifiedPayment[] = [
     merchant_name: "네이버쇼핑",
     product_name: "애플 에어팟 프로 2세대 MagSafe 충전 케이스 포함 정품 무선 이어폰 화이트 색상 새제품 미개봉",
     items: [
-      { line_no: 1, product_name: "애플 에어팟 프로 2세대 MagSafe 충전 케이스 포함", quantity: 1, unit_price: 89000, line_amount: 89000 },
+      { id: 403, line_no: 1, product_name: "애플 에어팟 프로 2세대 MagSafe 충전 케이스 포함", quantity: 1, unit_price: 89000, line_amount: 89000 },
     ],
   },
   {
@@ -421,7 +427,7 @@ const mockLongNamePayments: UnifiedPayment[] = [
     merchant_name: "로켓배송",
     product_name: "LG 그램 노트북 파우치 15.6인치 호환 고급 네오프렌 소재 스크래치 방지 초경량 캐리어 가방",
     items: [
-      { line_no: 1, product_name: "LG 그램 노트북 파우치 15.6인치", quantity: 2, unit_price: 78000, line_amount: 156000 },
+      { id: 404, line_no: 1, product_name: "LG 그램 노트북 파우치 15.6인치", quantity: 2, unit_price: 78000, line_amount: 156000 },
     ],
   },
 ];

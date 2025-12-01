@@ -12,6 +12,8 @@ import type { AccountProvider } from "@shared/api/types";
  * 각 결제 내 개별 상품 정보를 담습니다.
  */
 export interface UnifiedPaymentItem {
+  /** DB 내부 PK (tbl_naver_payment_item.id 또는 tbl_coupang_payment_item.id) */
+  id: number;
   /** 아이템 순번 (1부터 시작) */
   line_no: number;
   /** 플랫폼별 상품 ID */

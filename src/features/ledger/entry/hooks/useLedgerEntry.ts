@@ -3,7 +3,6 @@ import {
   getLedgerEntry,
   createLedgerEntry,
   updateLedgerEntry,
-  type LedgerEntry,
   type LedgerEntryInput,
 } from "../../shared";
 
@@ -45,7 +44,6 @@ export function useUpdateLedgerEntry() {
       entry: LedgerEntryInput;
     }) => updateLedgerEntry(entryId, entry),
     onSuccess: (_, variables) => {
-      const yearMonth = variables.entry.date.substring(0, 7);
       queryClient.invalidateQueries({
         queryKey: ["ledgerEntries"],
       });

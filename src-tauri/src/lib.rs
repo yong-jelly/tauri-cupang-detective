@@ -371,12 +371,65 @@ fn run_migrations(path: &Path) -> Result<(), String> {
         );
         
         CREATE INDEX IF NOT EXISTS idx_ledger_history_entry_id ON tbl_ledger_history(entry_id);
+        
+        -- 상품 카테고리 마스터 테이블 (미리 정의된 카테고리)
+        CREATE TABLE IF NOT EXISTS tbl_category (
+            id TEXT PRIMARY KEY,
+            name TEXT UNIQUE NOT NULL,
+            color TEXT,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        
+        -- 상품 메타데이터 테이블 (네이버/쿠팡 통합)
+        CREATE TABLE IF NOT EXISTS tbl_product_meta (
+            id TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            item_id INTEGER NOT NULL,
+            memo TEXT,
+            url TEXT,
+            rating INTEGER CHECK(rating IS NULL OR (rating >= 1 AND rating <= 10)),
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(provider, item_id)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_product_meta_provider_item ON tbl_product_meta(provider, item_id);
+        
+        -- 상품-태그 관계 테이블 (자유 입력)
+        CREATE TABLE IF NOT EXISTS tbl_product_tag (
+            id TEXT PRIMARY KEY,
+            meta_id TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(meta_id) REFERENCES tbl_product_meta(id) ON DELETE CASCADE,
+            UNIQUE(meta_id, tag)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_product_tag_meta_id ON tbl_product_tag(meta_id);
+        CREATE INDEX IF NOT EXISTS idx_product_tag_tag ON tbl_product_tag(tag);
+        
+        -- 상품-카테고리 관계 테이블
+        CREATE TABLE IF NOT EXISTS tbl_product_category (
+            id TEXT PRIMARY KEY,
+            meta_id TEXT NOT NULL,
+            category_id TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            FOREIGN KEY(meta_id) REFERENCES tbl_product_meta(id) ON DELETE CASCADE,
+            FOREIGN KEY(category_id) REFERENCES tbl_category(id) ON DELETE CASCADE,
+            UNIQUE(meta_id, category_id)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_product_category_meta_id ON tbl_product_category(meta_id);
+        CREATE INDEX IF NOT EXISTS idx_product_category_category_id ON tbl_product_category(category_id);
     "#,
     )
     .map_err(|e| e.to_string())?;
 
     // 기존 테이블에 새 컬럼 추가 (마이그레이션)
     migrate_coupang_tables(&conn)?;
+    
+    // 기본 카테고리 추가
+    seed_default_categories(&conn)?;
 
     Ok(())
 }
@@ -423,6 +476,31 @@ fn migrate_coupang_tables(conn: &Connection) -> Result<(), String> {
         );
         // 컬럼이 이미 존재하면 에러가 발생하지만 무시
         let _ = conn.execute(&sql, []);
+    }
+
+    Ok(())
+}
+
+// 기본 카테고리 시드 데이터 추가
+fn seed_default_categories(conn: &Connection) -> Result<(), String> {
+    let default_categories = vec![
+        ("cat_food", "식품/음료", "#ef4444"),
+        ("cat_fashion", "의류/패션", "#f97316"),
+        ("cat_electronics", "전자제품", "#3b82f6"),
+        ("cat_living", "생활용품", "#22c55e"),
+        ("cat_health", "건강/뷰티", "#ec4899"),
+        ("cat_hobby", "취미/레저", "#8b5cf6"),
+        ("cat_pet", "반려동물", "#f59e0b"),
+        ("cat_etc", "기타", "#6b7280"),
+    ];
+
+    for (id, name, color) in default_categories {
+        // INSERT OR IGNORE로 이미 존재하면 무시
+        conn.execute(
+            "INSERT OR IGNORE INTO tbl_category (id, name, color) VALUES (?1, ?2, ?3)",
+            rusqlite::params![id, name, color],
+        )
+        .map_err(|e| e.to_string())?;
     }
 
     Ok(())
@@ -687,6 +765,7 @@ struct HasUsersResponse {
 #[derive(Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NaverPaymentItem {
+    id: i64,
     line_no: i32,
     product_name: String,
     image_url: Option<String>,
@@ -751,6 +830,7 @@ struct NaverPayment {
 #[derive(Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CoupangPaymentItem {
+    id: i64,
     line_no: i32,
     product_id: Option<String>,
     vendor_item_id: Option<String>,
@@ -1231,7 +1311,7 @@ fn list_naver_payments(
         // 상세 항목 조회
         let mut item_stmt = conn
             .prepare(
-                "SELECT line_no, product_name, image_url, info_url, quantity,
+                "SELECT id, line_no, product_name, image_url, info_url, quantity,
                         unit_price, line_amount, rest_amount, memo
                  FROM tbl_naver_payment_item
                  WHERE payment_id = ?1
@@ -1242,15 +1322,16 @@ fn list_naver_payments(
         let item_rows = item_stmt
             .query_map([id], |row| {
                 Ok(NaverPaymentItem {
-                    line_no: row.get(0)?,
-                    product_name: row.get(1)?,
-                    image_url: row.get(2)?,
-                    info_url: row.get(3)?,
-                    quantity: row.get(4)?,
-                    unit_price: row.get(5)?,
-                    line_amount: row.get(6)?,
-                    rest_amount: row.get(7)?,
-                    memo: row.get(8)?,
+                    id: row.get(0)?,
+                    line_no: row.get(1)?,
+                    product_name: row.get(2)?,
+                    image_url: row.get(3)?,
+                    info_url: row.get(4)?,
+                    quantity: row.get(5)?,
+                    unit_price: row.get(6)?,
+                    line_amount: row.get(7)?,
+                    rest_amount: row.get(8)?,
+                    memo: row.get(9)?,
                 })
             })
             .map_err(|e| e.to_string())?;
@@ -1378,7 +1459,7 @@ fn list_coupang_payments(
         // 상세 항목 조회
         let mut item_stmt = conn
             .prepare(
-                "SELECT line_no, product_id, vendor_item_id, product_name, image_url, info_url,
+                "SELECT id, line_no, product_id, vendor_item_id, product_name, image_url, info_url,
                         brand_name, quantity, unit_price, discounted_unit_price, combined_unit_price,
                         line_amount, rest_amount, memo
                  FROM tbl_coupang_payment_item
@@ -1390,20 +1471,21 @@ fn list_coupang_payments(
         let item_rows = item_stmt
             .query_map([id], |row| {
                 Ok(CoupangPaymentItem {
-                    line_no: row.get(0)?,
-                    product_id: row.get(1)?,
-                    vendor_item_id: row.get(2)?,
-                    product_name: row.get(3)?,
-                    image_url: row.get(4)?,
-                    info_url: row.get(5)?,
-                    brand_name: row.get(6)?,
-                    quantity: row.get(7)?,
-                    unit_price: row.get(8)?,
-                    discounted_unit_price: row.get(9)?,
-                    combined_unit_price: row.get(10)?,
-                    line_amount: row.get(11)?,
-                    rest_amount: row.get(12)?,
-                    memo: row.get(13)?,
+                    id: row.get(0)?,
+                    line_no: row.get(1)?,
+                    product_id: row.get(2)?,
+                    vendor_item_id: row.get(3)?,
+                    product_name: row.get(4)?,
+                    image_url: row.get(5)?,
+                    info_url: row.get(6)?,
+                    brand_name: row.get(7)?,
+                    quantity: row.get(8)?,
+                    unit_price: row.get(9)?,
+                    discounted_unit_price: row.get(10)?,
+                    combined_unit_price: row.get(11)?,
+                    line_amount: row.get(12)?,
+                    rest_amount: row.get(13)?,
+                    memo: row.get(14)?,
                 })
             })
             .map_err(|e| e.to_string())?;
@@ -2541,6 +2623,429 @@ fn list_ledger_history(
     Ok(histories)
 }
 
+// ========== 상품 메타데이터 관련 구조체 및 함수 ==========
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Category {
+    id: String,
+    name: String,
+    color: Option<String>,
+    created_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductMeta {
+    id: String,
+    provider: String,
+    item_id: i64,
+    memo: Option<String>,
+    url: Option<String>,
+    rating: Option<i32>,
+    tags: Vec<String>,
+    categories: Vec<Category>,
+    created_at: String,
+    updated_at: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductMetaInput {
+    memo: Option<String>,
+    url: Option<String>,
+    rating: Option<i32>,
+    tags: Vec<String>,
+    category_ids: Vec<String>,
+}
+
+#[tauri::command]
+fn list_categories(
+    app_handle: AppHandle,
+    state: State<AppState>,
+) -> Result<Vec<Category>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn
+        .prepare("SELECT id, name, color, created_at FROM tbl_category ORDER BY name")
+        .map_err(|e| e.to_string())?;
+    
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(Category {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                color: row.get(2)?,
+                created_at: row.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut categories = Vec::new();
+    for row in rows {
+        categories.push(row.map_err(|e| e.to_string())?);
+    }
+    
+    Ok(categories)
+}
+
+#[tauri::command]
+fn create_category(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    name: String,
+    color: Option<String>,
+) -> Result<Category, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    let category_id = Uuid::new_v4().to_string();
+    let now = Utc::now().to_rfc3339();
+    
+    conn.execute(
+        "INSERT INTO tbl_category (id, name, color, created_at) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![category_id, name, color, now],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    Ok(Category {
+        id: category_id,
+        name,
+        color,
+        created_at: now,
+    })
+}
+
+#[tauri::command]
+fn delete_category(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    category_id: String,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    conn.execute("DELETE FROM tbl_category WHERE id = ?1", [category_id])
+        .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn get_product_meta(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    provider: String,
+    item_id: i64,
+) -> Result<Option<ProductMeta>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(None);
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    // 메타데이터 조회
+    let meta_result: Result<(String, String, i64, Option<String>, Option<String>, Option<i32>, String, String), rusqlite::Error> = conn.query_row(
+        "SELECT id, provider, item_id, memo, url, rating, created_at, updated_at
+         FROM tbl_product_meta WHERE provider = ?1 AND item_id = ?2",
+        rusqlite::params![provider, item_id],
+        |row| {
+            Ok((
+                row.get(0)?,
+                row.get(1)?,
+                row.get(2)?,
+                row.get(3)?,
+                row.get(4)?,
+                row.get(5)?,
+                row.get(6)?,
+                row.get(7)?,
+            ))
+        },
+    );
+    
+    match meta_result {
+        Ok((id, provider, item_id, memo, url, rating, created_at, updated_at)) => {
+            // 태그 조회
+            let mut tag_stmt = conn
+                .prepare("SELECT tag FROM tbl_product_tag WHERE meta_id = ?1 ORDER BY tag")
+                .map_err(|e| e.to_string())?;
+            let tag_rows = tag_stmt
+                .query_map([&id], |row| row.get::<_, String>(0))
+                .map_err(|e| e.to_string())?;
+            
+            let mut tags = Vec::new();
+            for tag_result in tag_rows {
+                tags.push(tag_result.map_err(|e| e.to_string())?);
+            }
+            
+            // 카테고리 조회
+            let mut cat_stmt = conn
+                .prepare(
+                    "SELECT c.id, c.name, c.color, c.created_at
+                     FROM tbl_category c
+                     INNER JOIN tbl_product_category pc ON c.id = pc.category_id
+                     WHERE pc.meta_id = ?1
+                     ORDER BY c.name"
+                )
+                .map_err(|e| e.to_string())?;
+            let cat_rows = cat_stmt
+                .query_map([&id], |row| {
+                    Ok(Category {
+                        id: row.get(0)?,
+                        name: row.get(1)?,
+                        color: row.get(2)?,
+                        created_at: row.get(3)?,
+                    })
+                })
+                .map_err(|e| e.to_string())?;
+            
+            let mut categories = Vec::new();
+            for cat_result in cat_rows {
+                categories.push(cat_result.map_err(|e| e.to_string())?);
+            }
+            
+            Ok(Some(ProductMeta {
+                id,
+                provider,
+                item_id,
+                memo,
+                url,
+                rating,
+                tags,
+                categories,
+                created_at,
+                updated_at,
+            }))
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn save_product_meta(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    provider: String,
+    item_id: i64,
+    input: ProductMetaInput,
+) -> Result<ProductMeta, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let mut conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    
+    let now = Utc::now().to_rfc3339();
+    
+    // 기존 메타데이터 확인
+    let existing_id: Option<String> = tx
+        .query_row(
+            "SELECT id FROM tbl_product_meta WHERE provider = ?1 AND item_id = ?2",
+            rusqlite::params![provider, item_id],
+            |row| row.get(0),
+        )
+        .ok();
+    
+    let meta_id = if let Some(id) = existing_id {
+        // 업데이트
+        tx.execute(
+            "UPDATE tbl_product_meta SET memo = ?1, url = ?2, rating = ?3, updated_at = ?4 WHERE id = ?5",
+            rusqlite::params![input.memo, input.url, input.rating, now, id],
+        )
+        .map_err(|e| e.to_string())?;
+        id
+    } else {
+        // 새로 생성
+        let new_id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO tbl_product_meta (id, provider, item_id, memo, url, rating, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![new_id, provider, item_id, input.memo, input.url, input.rating, now, now],
+        )
+        .map_err(|e| e.to_string())?;
+        new_id
+    };
+    
+    // 태그 삭제 후 재생성
+    tx.execute("DELETE FROM tbl_product_tag WHERE meta_id = ?1", [&meta_id])
+        .map_err(|e| e.to_string())?;
+    
+    for tag in &input.tags {
+        let tag_id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO tbl_product_tag (id, meta_id, tag, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![tag_id, meta_id, tag, now],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    
+    // 카테고리 관계 삭제 후 재생성
+    tx.execute("DELETE FROM tbl_product_category WHERE meta_id = ?1", [&meta_id])
+        .map_err(|e| e.to_string())?;
+    
+    for category_id in &input.category_ids {
+        let rel_id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO tbl_product_category (id, meta_id, category_id, created_at) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![rel_id, meta_id, category_id, now],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    
+    tx.commit().map_err(|e| e.to_string())?;
+    
+    // 저장된 데이터 반환
+    get_product_meta(app_handle, state, provider, item_id)?
+        .ok_or_else(|| "저장된 메타데이터를 찾을 수 없습니다.".to_string())
+}
+
+#[tauri::command]
+fn delete_product_meta(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    provider: String,
+    item_id: i64,
+) -> Result<(), String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Err("DB 파일이 존재하지 않습니다.".to_string());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    // CASCADE로 태그, 카테고리 관계도 자동 삭제
+    conn.execute(
+        "DELETE FROM tbl_product_meta WHERE provider = ?1 AND item_id = ?2",
+        rusqlite::params![provider, item_id],
+    )
+    .map_err(|e| e.to_string())?;
+    
+    Ok(())
+}
+
+#[tauri::command]
+fn search_tags(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    query: String,
+    limit: Option<i64>,
+) -> Result<Vec<String>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    let search_term = format!("%{}%", query);
+    let result_limit = limit.unwrap_or(20);
+    
+    let mut stmt = conn
+        .prepare(
+            "SELECT DISTINCT tag FROM tbl_product_tag 
+             WHERE tag LIKE ?1 
+             ORDER BY tag 
+             LIMIT ?2"
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let rows = stmt
+        .query_map(rusqlite::params![search_term, result_limit], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+    
+    let mut tags = Vec::new();
+    for row in rows {
+        tags.push(row.map_err(|e| e.to_string())?);
+    }
+    
+    Ok(tags)
+}
+
+/// 상품 메타데이터 요약 정보
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ProductMetaSummary {
+    item_id: i64,
+    has_tags: bool,
+    has_categories: bool,
+    has_memo: bool,
+    has_url: bool,
+    rating: Option<i32>,
+}
+
+/// 특정 provider의 모든 상품 메타데이터 요약 조회
+#[tauri::command]
+fn list_product_meta_summaries(
+    app_handle: AppHandle,
+    state: State<AppState>,
+    provider: String,
+) -> Result<Vec<ProductMetaSummary>, String> {
+    let path = configured_db_path(&app_handle, &state)?
+        .ok_or_else(|| "DB가 설정되지 않았습니다.".to_string())?;
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let conn = Connection::open(&path).map_err(|e| e.to_string())?;
+    
+    // 메타데이터와 태그/카테고리 개수를 한 번에 조회
+    let mut stmt = conn
+        .prepare(
+            "SELECT 
+                m.item_id,
+                m.memo,
+                m.url,
+                m.rating,
+                (SELECT COUNT(*) FROM tbl_product_tag WHERE meta_id = m.id) as tag_count,
+                (SELECT COUNT(*) FROM tbl_product_category WHERE meta_id = m.id) as category_count
+             FROM tbl_product_meta m
+             WHERE m.provider = ?1"
+        )
+        .map_err(|e| e.to_string())?;
+    
+    let rows = stmt
+        .query_map(rusqlite::params![provider], |row| {
+            let memo: Option<String> = row.get(1)?;
+            let url: Option<String> = row.get(2)?;
+            let rating: Option<i32> = row.get(3)?;
+            let tag_count: i64 = row.get(4)?;
+            let category_count: i64 = row.get(5)?;
+            
+            Ok(ProductMetaSummary {
+                item_id: row.get(0)?,
+                has_tags: tag_count > 0,
+                has_categories: category_count > 0,
+                has_memo: memo.is_some() && !memo.as_ref().unwrap().is_empty(),
+                has_url: url.is_some() && !url.as_ref().unwrap().is_empty(),
+                rating,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    
+    let mut summaries = Vec::new();
+    for row in rows {
+        summaries.push(row.map_err(|e| e.to_string())?);
+    }
+    
+    Ok(summaries)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -2583,7 +3088,15 @@ pub fn run() {
             delete_ledger_entry,
             list_ledger_entries,
             get_ledger_entry,
-            list_ledger_history
+            list_ledger_history,
+            list_categories,
+            create_category,
+            delete_category,
+            get_product_meta,
+            save_product_meta,
+            delete_product_meta,
+            search_tags,
+            list_product_meta_summaries
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

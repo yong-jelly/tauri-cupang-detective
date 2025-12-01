@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Lock, User } from "lucide-react";
+import { Lock, User } from "lucide-react";
 import { RetroButton, RetroInput } from "@shared/ui";
 import { useCreateLedgerAccount } from "../hooks";
 

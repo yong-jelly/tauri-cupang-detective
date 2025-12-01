@@ -460,6 +460,7 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
           </div>
           <TransactionTable
             payments={stats.sortedPayments}
+            provider={account.provider}
             visibleCount={visibleCount}
             showLoadMore={visibleCount < stats.sortedPayments.length}
             remainingCount={stats.sortedPayments.length - visibleCount}

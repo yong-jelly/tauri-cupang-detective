@@ -123,6 +123,36 @@ export const LedgerEntryPage = () => {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [memo, setMemo] = useState("");
   
+  // 스텝 정보
+  const steps: { key: Step; label: string; number: number }[] = [
+    { key: "type", label: "유형", number: 1 },
+    { key: "basic", label: "기본 정보", number: 2 },
+    { key: "category", label: "카테고리", number: 3 },
+    { key: "extra", label: "추가 정보", number: 4 },
+    { key: "confirm", label: "확인", number: 5 },
+  ];
+  
+  const currentStepIndex = steps.findIndex(s => s.key === step);
+  const currentStepInfo = steps[currentStepIndex];
+
+  // 모든 Hook은 early return 이전에 호출되어야 함
+  const canProceed = useCallback((): boolean => {
+    switch (step) {
+      case "type":
+        return type !== null;
+      case "basic":
+        return title.trim() !== "" && amount !== "";
+      case "category":
+        return category !== "";
+      case "extra":
+        return true; // 선택 사항
+      case "confirm":
+        return true;
+      default:
+        return false;
+    }
+  }, [step, type, title, amount, category]);
+  
   // 수정 모드일 때 기존 데이터 로드
   useEffect(() => {
     if (existingEntry) {
@@ -141,6 +171,7 @@ export const LedgerEntryPage = () => {
     }
   }, [existingEntry]);
   
+  // Early returns - 모든 Hook 호출 후에 배치
   if (!accountId) {
     return <div>계정 ID가 필요합니다.</div>;
   }
@@ -158,35 +189,6 @@ export const LedgerEntryPage = () => {
   }
 
   const categories = type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
-  
-  // 스텝 정보
-  const steps: { key: Step; label: string; number: number }[] = [
-    { key: "type", label: "유형", number: 1 },
-    { key: "basic", label: "기본 정보", number: 2 },
-    { key: "category", label: "카테고리", number: 3 },
-    { key: "extra", label: "추가 정보", number: 4 },
-    { key: "confirm", label: "확인", number: 5 },
-  ];
-  
-  const currentStepIndex = steps.findIndex(s => s.key === step);
-  const currentStepInfo = steps[currentStepIndex];
-
-  const canProceed = useCallback((): boolean => {
-    switch (step) {
-      case "type":
-        return type !== null;
-      case "basic":
-        return title.trim() !== "" && amount !== "";
-      case "category":
-        return category !== "";
-      case "extra":
-        return true; // 선택 사항
-      case "confirm":
-        return true;
-      default:
-        return false;
-    }
-  }, [step, type, title, amount, category]);
 
   const handleNext = () => {
     if (!canProceed()) return;
@@ -217,7 +219,7 @@ export const LedgerEntryPage = () => {
         date,
         title,
         category,
-        platform: platform || undefined,
+        platform: (platform || undefined) as LedgerEntryInput["platform"],
         url: url || undefined,
         merchant: merchant || undefined,
         paymentMethod: paymentMethod || undefined,
