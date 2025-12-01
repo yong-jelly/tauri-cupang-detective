@@ -1,0 +1,221 @@
+# 데이터 수집 증분 체크 알고리즘
+
+## 개요
+
+데이터 수집 시 증분 체크는 **프론트엔드 로직**과 **DB UPSERT**의 조합으로 동작합니다.
+
+---
+
+## 1. 네이버 페이 (tbl_naver_payment)
+
+### DB 스키마
+```sql
+CREATE TABLE tbl_naver_payment (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         TEXT NOT NULL,
+    pay_id          TEXT NOT NULL,
+    paid_at         TEXT NOT NULL,
+    ...
+);
+
+-- 인덱스 (✅ 수정됨: user_id, pay_id 조합으로 UNIQUE)
+CREATE UNIQUE INDEX ux_naver_payment_user_pay ON tbl_naver_payment (user_id, pay_id);
+```
+
+### 증분 체크 흐름
+
+1. **마지막 결제 조회** (`get_last_naver_payment`)
+   ```sql
+   SELECT pay_id, paid_at 
+   FROM tbl_naver_payment 
+   WHERE user_id = ?1 
+   ORDER BY paid_at DESC 
+   LIMIT 1
+   ```
+   - `user_id`로 필터링하여 해당 계정의 최신 결제 조회
+   - `paid_at` 기준 내림차순 정렬
+
+2. **프론트엔드 수집 로직** (`NaverTransactionCollector.tsx`)
+   ```typescript
+   // 증분 수집 모드일 때만 stopAtPayId 설정
+   let stopAtPayId: string | null = null;
+   if (mode === "incremental") {
+     const lastSaved = await invoke("get_last_naver_payment", { userId: account.id });
+     if (lastSaved) {
+       stopAtPayId = lastSaved.payId;
+     }
+   }
+   
+   // 수집 중 payId가 마지막 저장된 것과 일치하면 중단
+   if (stopAtPayId && payId === stopAtPayId) {
+     reachedLastSynced = true;
+     break;
+   }
+   ```
+
+3. **DB 저장** (`save_naver_payment`)
+   ```sql
+   INSERT INTO tbl_naver_payment (...) VALUES (...)
+   ON CONFLICT(user_id, pay_id) DO UPDATE SET ...
+   ```
+   - `(user_id, pay_id)` 조합 기준 UPSERT
+
+### ✅ 현재 구현 상태
+
+| 구분 | 현재 구현 | 상태 |
+|------|----------|------|
+| UNIQUE 인덱스 | `(user_id, pay_id)` | ✅ 정상 |
+| 마지막 결제 조회 | `user_id`별 `paid_at DESC` | ✅ 정상 |
+| UPSERT 조건 | `(user_id, pay_id)` | ✅ 정상 |
+
+---
+
+## 2. 쿠팡 (tbl_coupang_payment)
+
+### DB 스키마
+```sql
+CREATE TABLE tbl_coupang_payment (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id         TEXT NOT NULL,
+    order_id        TEXT NOT NULL,
+    ordered_at      TEXT NOT NULL,
+    ...
+);
+
+-- 인덱스 (✅ 수정됨: user_id, order_id 조합으로 UNIQUE)
+CREATE UNIQUE INDEX ux_coupang_payment_user_order ON tbl_coupang_payment (user_id, order_id);
+```
+
+### 증분 체크 흐름
+
+1. **마지막 결제 조회** (`get_last_coupang_payment`)
+   ```sql
+   SELECT order_id, ordered_at 
+   FROM tbl_coupang_payment 
+   WHERE user_id = ?1 
+   ORDER BY ordered_at DESC 
+   LIMIT 1
+   ```
+   - `user_id`로 필터링하여 해당 계정의 최신 주문 조회
+   - `ordered_at` 기준 내림차순 정렬
+
+2. **프론트엔드 수집 로직** (`CoupangTransactionCollector.tsx`)
+   ```typescript
+   // 증분 수집 모드일 때만 stopAtOrderId 설정
+   let stopAtOrderId: string | null = null;
+   if (mode === "incremental") {
+     const lastSaved = await invoke("get_last_coupang_payment", { userId: account.id });
+     if (lastSaved) {
+       stopAtOrderId = lastSaved.orderId;
+     }
+   }
+   
+   // 수집 중 orderId가 마지막 저장된 것과 일치하면 중단
+   if (stopAtOrderId && orderId === stopAtOrderId) {
+     reachedLastSynced = true;
+     break;
+   }
+   ```
+
+3. **DB 저장** (`save_coupang_payment`)
+   ```sql
+   INSERT INTO tbl_coupang_payment (...) VALUES (...)
+   ON CONFLICT(user_id, order_id) DO UPDATE SET ...
+   ```
+   - `(user_id, order_id)` 조합 기준 UPSERT
+
+### ✅ 현재 구현 상태
+
+| 구분 | 현재 구현 | 상태 |
+|------|----------|------|
+| UNIQUE 인덱스 | `(user_id, order_id)` | ✅ 정상 |
+| 마지막 결제 조회 | `user_id`별 `ordered_at DESC` | ✅ 정상 |
+| UPSERT 조건 | `(user_id, order_id)` | ✅ 정상 |
+
+---
+
+## 3. 증분 체크가 실패하는 시나리오
+
+### 시나리오 1: 동일 계정에서 중간에 새 결제 발생
+
+```
+[DB 상태]
+pay_id: 001 (paid_at: 2024-01-01) ← 마지막 저장
+pay_id: 002 (paid_at: 2024-01-02) ← 새로 발생한 결제
+
+[API 응답 순서 - 최신순]
+002, 001, ...
+
+[증분 수집]
+1. 마지막 저장 pay_id = 001 조회
+2. API에서 002 수집 → 저장
+3. API에서 001 발견 → 중단 ✅
+```
+→ 정상 동작
+
+### 시나리오 2: 마지막 결제가 API 목록에서 사라진 경우
+
+```
+[DB 상태]
+pay_id: 001 (paid_at: 2024-01-01) ← 마지막 저장 (취소/삭제됨)
+
+[API 응답 - 001이 없음]
+003, 002, ...
+
+[증분 수집]
+1. 마지막 저장 pay_id = 001 조회
+2. 001을 찾을 때까지 계속 수집
+3. 모든 페이지 순회 → 결국 전체 수집됨 ⚠️
+```
+→ 불필요한 전체 수집 발생
+
+### 시나리오 3: 날짜 정렬 불일치
+
+```
+[DB에서 마지막 결제 조회]
+pay_id: 002 (paid_at: 2024-01-03) ← paid_at 기준 최신
+
+[API 응답 순서 - API 내부 정렬 기준]
+001, 003, 002, ...  (API가 다른 기준으로 정렬)
+
+[증분 수집]
+1. 마지막 저장 pay_id = 002 조회
+2. API에서 001 수집 (이미 있을 수 있음)
+3. API에서 003 수집
+4. API에서 002 발견 → 중단
+```
+→ 001, 003 중복 저장 (UPSERT로 처리되지만 불필요한 API 호출)
+
+---
+
+## 4. 기존 DB 마이그레이션 (수동)
+
+기존 DB 파일이 있는 경우 아래 SQL로 인덱스를 수동 변경해야 합니다:
+
+```sql
+-- 네이버
+DROP INDEX IF EXISTS ux_naver_payment_pay_id;
+DROP INDEX IF EXISTS idx_naver_payment_user_id;
+CREATE UNIQUE INDEX ux_naver_payment_user_pay ON tbl_naver_payment (user_id, pay_id);
+
+-- 쿠팡
+DROP INDEX IF EXISTS ux_coupang_payment_order_id;
+DROP INDEX IF EXISTS idx_coupang_payment_user_id;
+CREATE UNIQUE INDEX ux_coupang_payment_user_order ON tbl_coupang_payment (user_id, order_id);
+```
+
+> ⚠️ 신규 DB 생성 시에는 자동으로 올바른 인덱스가 생성됩니다.
+
+---
+
+## 5. 현재 구현 요약
+
+| 플랫폼 | 테이블 | 증분 기준 컬럼 | 정렬 기준 | UNIQUE 인덱스 |
+|--------|--------|---------------|----------|--------------|
+| 네이버 | tbl_naver_payment | pay_id | paid_at DESC | (user_id, pay_id) ✅ |
+| 쿠팡 | tbl_coupang_payment | order_id | ordered_at DESC | (user_id, order_id) ✅ |
+
+**결론:**
+- 네이버: `tbl_naver_payment.(user_id, pay_id)` 조합으로 UNIQUE ✅
+- 쿠팡: `tbl_coupang_payment.(user_id, order_id)` 조합으로 UNIQUE ✅
+

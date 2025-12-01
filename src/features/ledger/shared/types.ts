@@ -41,3 +41,5 @@ export interface LedgerHistory {
 // 가계부 항목 생성/수정용 타입 (id 제외)
 export type LedgerEntryInput = Omit<LedgerEntry, "id" | "createdAt" | "updatedAt">;
 
+
+

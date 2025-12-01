@@ -130,8 +130,13 @@ export const MainLayout = ({
   };
 
   // 검색 핸들러
+  // 이미 검색 페이지에 있으면 히스토리 대체, 아니면 새 페이지로 이동
   const handleSearch = (query: string) => {
-    navigate(`/search?q=${encodeURIComponent(query)}`);
+    if (isSearchMode) {
+      navigate(`/search?q=${encodeURIComponent(query)}`, { replace: true });
+    } else {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    }
   };
 
   return (

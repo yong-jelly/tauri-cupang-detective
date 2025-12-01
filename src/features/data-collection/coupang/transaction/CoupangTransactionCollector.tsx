@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, ProxyResponse } from "@shared/api/types";
-import { Pause, CheckCircle, AlertCircle, Clock, Loader2, RefreshCw, FastForward } from "lucide-react";
+import { Pause, CheckCircle, AlertCircle, Clock, Loader2, RefreshCw, FastForward, AlertTriangle, Database, Calendar } from "lucide-react";
 import { useAccountCredentials } from "@features/data-collection/shared/hooks/useAccountCredentials";
+import { RetroModal, RetroModalBody } from "@shared/ui";
 
 // 쿠팡 주문 항목 인터페이스
 interface CoupangPaymentItem {
@@ -60,6 +61,17 @@ interface LastCoupangPaymentInfo {
   orderedAt: string;
 }
 
+interface TableStat {
+  name: string;
+  rowCount: number;
+}
+
+interface CollectionStats {
+  lastPayment: LastCoupangPaymentInfo | null;
+  totalCount: number;
+  daysSinceLastCollection: number | null;
+}
+
 interface LogEntry {
   timestamp: string;
   page: number;
@@ -84,6 +96,9 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
   const [currentPage, setCurrentPage] = useState<number | null>(null);
   const [buildId, setBuildId] = useState<string | null>(null);
   const [collectionMode, setCollectionMode] = useState<CollectionMode>("incremental");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [collectionStats, setCollectionStats] = useState<CollectionStats | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const stopRequestedRef = useRef(false);
 
   const addLog = (
@@ -111,6 +126,45 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
   };
 
   const { getHeaders } = useAccountCredentials(account);
+
+  // 마지막 수집 정보 로드
+  useEffect(() => {
+    const loadCollectionStats = async () => {
+      setIsLoadingStats(true);
+      try {
+        // 마지막 결제 정보 조회
+        const lastPayment = await invoke<LastCoupangPaymentInfo | null>("get_last_coupang_payment", {
+          userId: account.id,
+        });
+
+        // 테이블 통계 조회
+        const tableStats = await invoke<TableStat[]>("get_table_stats");
+        const paymentTable = tableStats.find(t => t.name === "tbl_coupang_payment");
+        const totalCount = paymentTable?.rowCount || 0;
+
+        // 마지막 수집 이후 경과일 계산
+        let daysSinceLastCollection: number | null = null;
+        if (lastPayment?.orderedAt) {
+          const lastDate = new Date(lastPayment.orderedAt);
+          const now = new Date();
+          daysSinceLastCollection = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        }
+
+        setCollectionStats({
+          lastPayment,
+          totalCount,
+          daysSinceLastCollection,
+        });
+      } catch (e) {
+        console.error("Failed to load collection stats:", e);
+        setCollectionStats(null);
+      } finally {
+        setIsLoadingStats(false);
+      }
+    };
+
+    loadCollectionStats();
+  }, [account.id]);
 
   // 딜레이 함수
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -300,8 +354,31 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
     }
   };
 
-  const startCollection = async (mode: CollectionMode) => {
+  // 전체 수집 시 테이블 초기화
+  const truncateTables = async () => {
+    try {
+      await invoke("truncate_table", { tableName: "tbl_coupang_payment_item" });
+      await invoke("truncate_table", { tableName: "tbl_coupang_payment" });
+      addLog("기존 데이터가 초기화되었습니다.", "info", 0);
+    } catch (e) {
+      throw new Error(`테이블 초기화 실패: ${e}`);
+    }
+  };
+
+  // 전체 수집 확인 다이얼로그에서 확인 클릭 시
+  const handleConfirmFullCollection = async () => {
+    setShowConfirmDialog(false);
+    await startCollection("full", true);
+  };
+
+  const startCollection = async (mode: CollectionMode, confirmed: boolean = false) => {
     if (isCollecting) return;
+    
+    // 전체 수집 모드이고 확인 안 된 경우 다이얼로그 표시
+    if (mode === "full" && !confirmed) {
+      setShowConfirmDialog(true);
+      return;
+    }
     
     setIsCollecting(true);
     setCollectionMode(mode);
@@ -309,6 +386,9 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
     setLogs([]);
     setProgress({ total: 0, current: 0, success: 0, failed: 0 });
     setBuildId(null); // 수집 시작 시 Build ID 초기화
+    
+    // 전체 수집 모드일 때 첫 데이터 수집 성공 후 truncate 실행을 위한 플래그
+    let needsTruncate = mode === "full";
     
     try {
       const headers = getHeaders();
@@ -331,7 +411,7 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
           addLog("저장된 주문이 없어 전체 내역을 수집합니다.", "info", 0);
         }
       } else {
-        addLog("전체 수집 모드: 처음부터 모든 내역을 수집합니다.", "info", 0);
+        addLog("전체 수집 모드: API 테스트 후 기존 데이터를 삭제합니다.", "info", 0);
       }
       
       // 1. Build ID 추출 (최초 1회만)
@@ -414,6 +494,13 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
             const detail = await fetchAndParseDetail(orderId, extractedBuildId, headers);
             
             if (detail) {
+              // 전체 수집 모드에서 첫 데이터 수집 성공 시 기존 데이터 삭제
+              if (needsTruncate) {
+                addLog("API 테스트 성공. 기존 데이터 초기화 중...", "info", globalPageCount);
+                await truncateTables();
+                needsTruncate = false;
+              }
+              
               // DB 저장
               try {
                 await invoke("save_coupang_payment", {
@@ -659,8 +746,46 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
                 ))}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
-                      수집을 시작하면 로그가 표시됩니다.
+                    <td colSpan={4} className="px-4 py-8">
+                      {isLoadingStats ? (
+                        <div className="flex items-center justify-center gap-2 text-gray-500">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>수집 정보 로딩 중...</span>
+                        </div>
+                      ) : collectionStats ? (
+                        <div className="flex flex-col items-center gap-3 text-gray-600">
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                              <Database className="w-4 h-4 text-[#264653]" />
+                              <span className="text-sm">
+                                총 <span className="font-bold text-[#264653]">{collectionStats.totalCount.toLocaleString()}</span>건 수집됨
+                              </span>
+                            </div>
+                            {collectionStats.lastPayment && (
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-[#2a9d8f]" />
+                                <span className="text-sm">
+                                  최신: <span className="font-bold text-[#2a9d8f]">{new Date(collectionStats.lastPayment.orderedAt).toLocaleDateString()}</span>
+                                  {collectionStats.daysSinceLastCollection !== null && (
+                                    <span className="ml-1 text-xs text-gray-500">
+                                      ({collectionStats.daysSinceLastCollection === 0 ? "오늘" : `${collectionStats.daysSinceLastCollection}일 전`})
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 italic">
+                            {collectionStats.totalCount > 0 
+                              ? "새 내역을 수집하거나 전체 재수집을 시작할 수 있습니다." 
+                              : "수집된 데이터가 없습니다. 수집을 시작해주세요."}
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-center text-gray-500 italic">
+                          수집을 시작하면 로그가 표시됩니다.
+                        </p>
+                      )}
                     </td>
                   </tr>
                 )}
@@ -669,6 +794,52 @@ export const CoupangTransactionCollector = ({ account }: CoupangTransactionColle
           </div>
         </div>
       </div>
+
+      {/* 전체 수집 확인 다이얼로그 */}
+      <RetroModal
+        isOpen={showConfirmDialog}
+        onClose={() => setShowConfirmDialog(false)}
+        title="전체 수집 확인"
+        size="sm"
+        closeOnBackdropClick={false}
+        footer={
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-gray-200 text-gray-700 border-2 border-gray-800 hover:bg-gray-300 transition-colors shadow-[2px_2px_0px_0px_rgba(31,41,55,0.4)]"
+            >
+              취소
+            </button>
+            <button
+              onClick={handleConfirmFullCollection}
+              className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[#e76f51] text-white border-2 border-gray-800 hover:bg-[#e63946] transition-colors shadow-[2px_2px_0px_0px_rgba(31,41,55,0.4)]"
+            >
+              확인
+            </button>
+          </div>
+        }
+      >
+        <RetroModalBody>
+          <div className="flex flex-col items-center gap-4 py-2">
+            <div className="p-3 bg-[#e76f51]/10 rounded-full border-2 border-[#e76f51]">
+              <AlertTriangle className="w-8 h-8 text-[#e76f51]" />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-gray-800 font-medium">
+                기존 수집된 데이터를 <span className="text-[#e76f51] font-bold">모두 삭제</span>하고
+              </p>
+              <p className="text-gray-800 font-medium">
+                처음부터 다시 수집합니다.
+              </p>
+              {collectionStats && collectionStats.totalCount > 0 && (
+                <p className="text-sm text-gray-600 mt-3 bg-gray-100 px-3 py-2 border border-gray-300">
+                  현재 <span className="font-bold text-[#264653]">{collectionStats.totalCount.toLocaleString()}</span>건의 데이터가 삭제됩니다.
+                </p>
+              )}
+            </div>
+          </div>
+        </RetroModalBody>
+      </RetroModal>
     </div>
   );
 };

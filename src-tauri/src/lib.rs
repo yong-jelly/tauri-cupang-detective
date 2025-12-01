@@ -194,8 +194,7 @@ fn run_migrations(path: &Path) -> Result<(), String> {
             FOREIGN KEY(user_id) REFERENCES tbl_user(id) ON DELETE CASCADE
         );
         
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_naver_payment_pay_id ON tbl_naver_payment (pay_id);
-        CREATE INDEX IF NOT EXISTS idx_naver_payment_user_id ON tbl_naver_payment (user_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_naver_payment_user_pay ON tbl_naver_payment (user_id, pay_id);
         
         -- 네이버 페이 결제 상세 항목 테이블
         CREATE TABLE IF NOT EXISTS tbl_naver_payment_item (
@@ -274,8 +273,7 @@ fn run_migrations(path: &Path) -> Result<(), String> {
             FOREIGN KEY(user_id) REFERENCES tbl_user(id) ON DELETE CASCADE
         );
         
-        CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_order_id ON tbl_coupang_payment (order_id);
-        CREATE INDEX IF NOT EXISTS idx_coupang_payment_user_id ON tbl_coupang_payment (user_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS ux_coupang_payment_user_order ON tbl_coupang_payment (user_id, order_id);
         
         -- 쿠팡 주문 상세 항목 테이블 (상품 단위)
         CREATE TABLE IF NOT EXISTS tbl_coupang_payment_item (
@@ -1085,7 +1083,7 @@ fn save_naver_payment(
                 ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34,
                 ?35, ?36, ?37, ?38, ?39, ?40, ?41, ?42, ?43, ?44, ?45, ?46, ?47
             )
-            ON CONFLICT(pay_id) DO UPDATE SET
+            ON CONFLICT(user_id, pay_id) DO UPDATE SET
                 external_id = excluded.external_id,
                 service_type = excluded.service_type,
                 status_code = excluded.status_code,
@@ -1115,8 +1113,8 @@ fn save_naver_payment(
 
         // 저장된 결제의 ID 조회
         let payment_pk: i64 = tx.query_row(
-            "SELECT id FROM tbl_naver_payment WHERE pay_id = ?1",
-            [payment.pay_id],
+            "SELECT id FROM tbl_naver_payment WHERE user_id = ?1 AND pay_id = ?2",
+            rusqlite::params![&user_id, payment.pay_id],
             |row| row.get(0),
         ).map_err(|e| e.to_string())?;
 
@@ -1474,7 +1472,7 @@ fn save_coupang_payment(
             ) VALUES (
                 ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31
             )
-            ON CONFLICT(order_id) DO UPDATE SET
+            ON CONFLICT(user_id, order_id) DO UPDATE SET
                 external_id = excluded.external_id,
                 status_code = excluded.status_code,
                 status_text = excluded.status_text,
@@ -1519,8 +1517,8 @@ fn save_coupang_payment(
 
         // 저장된 결제의 ID 조회
         let payment_pk: i64 = tx.query_row(
-            "SELECT id FROM tbl_coupang_payment WHERE order_id = ?1",
-            [payment.order_id.clone()],
+            "SELECT id FROM tbl_coupang_payment WHERE user_id = ?1 AND order_id = ?2",
+            rusqlite::params![&user_id, &payment.order_id],
             |row| row.get(0),
         ).map_err(|e| e.to_string())?;
 

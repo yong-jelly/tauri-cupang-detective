@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Loader2, TrendingUp, Receipt, Calendar, PieChart as PieChartIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, TrendingUp, Receipt, Calendar, PieChart as PieChartIcon, ChevronLeft, ChevronRight, FileX2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -181,55 +181,126 @@ export const ExpenditureDashboardPage = ({ account }: ExpenditureDashboardPagePr
     );
   }
 
+  // 해당 월에 데이터가 없는 경우 빈 화면
+  const isEmptyMonth = stats.totalCount === 0;
+
+  // 헤더 컴포넌트 (공통)
+  const renderHeader = () => (
+    <div className="border-b-4 border-gray-800 pb-4 flex justify-between items-end">
+      <div>
+        <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">월별 지출 현황</h1>
+        <p className="text-gray-600 text-lg italic">
+          {account.alias} ({account.provider})
+        </p>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex items-center bg-white border-2 border-gray-800 shadow-[2px_2px_0px_0px_rgba(31,41,55,1)]">
+          <button
+            onClick={handlePrevMonth}
+            disabled={!canGoPrev}
+            className={`p-2 transition-colors border-r-2 border-gray-800 ${
+              canGoPrev 
+                ? "hover:bg-gray-100 text-gray-800" 
+                : "text-gray-300 cursor-not-allowed"
+            }`}
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <div className="px-4 py-2 font-bold text-xl text-gray-900 min-w-[140px] text-center font-serif">
+            {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
+          </div>
+          <button
+            onClick={handleNextMonth}
+            disabled={!canGoNext}
+            className={`p-2 transition-colors border-l-2 border-gray-800 ${
+              canGoNext 
+                ? "hover:bg-gray-100 text-gray-800" 
+                : "text-gray-300 cursor-not-allowed"
+            }`}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+        <button
+          onClick={handleToday}
+          className="px-4 py-2 bg-gray-800 text-white font-bold text-sm border-2 border-gray-800 hover:bg-gray-700 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]"
+        >
+          최근
+        </button>
+      </div>
+    </div>
+  );
+
+  // 빈 화면 전용 UI
+  if (isEmptyMonth) {
+    return (
+      <div className="relative flex-1 h-full overflow-y-auto bg-[#fdfbf7] font-serif p-8">
+        {/* 배경 패턴 */}
+        <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto space-y-8">
+          {renderHeader()}
+          
+          {/* 빈 상태 표시 */}
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="bg-[#fffef0] p-12 border-4 border-double border-gray-800 shadow-[6px_6px_0px_0px_rgba(31,41,55,1)] text-center max-w-lg">
+              {/* 장식적 상단 라인 */}
+              <div className="flex items-center justify-center gap-4 mb-8">
+                <div className="h-px w-12 bg-gray-400" />
+                <FileX2 className="w-16 h-16 text-gray-400" strokeWidth={1} />
+                <div className="h-px w-12 bg-gray-400" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-gray-800 mb-4 tracking-tight">
+                {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
+              </h2>
+              
+              <div className="w-16 h-0.5 bg-gray-800 mx-auto mb-4" />
+              
+              <p className="text-lg text-gray-600 mb-2">
+                기록된 거래 내역이 없습니다
+              </p>
+              <p className="text-sm text-gray-500 italic">
+                이 기간에는 결제 데이터가 수집되지 않았습니다.
+              </p>
+              
+              {/* 장식적 하단 */}
+              <div className="mt-8 pt-6 border-t-2 border-dashed border-gray-300">
+                <div className="flex justify-center gap-6 text-gray-400">
+                  <div className="text-center">
+                    <Receipt className="w-6 h-6 mx-auto mb-1" />
+                    <span className="text-xs">0건</span>
+                  </div>
+                  <div className="text-center">
+                    <TrendingUp className="w-6 h-6 mx-auto mb-1" />
+                    <span className="text-xs">₩0</span>
+                  </div>
+                  <div className="text-center">
+                    <Calendar className="w-6 h-6 mx-auto mb-1" />
+                    <span className="text-xs">-</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* 안내 메시지 */}
+            {availableMonths.length > 0 && (
+              <p className="mt-8 text-sm text-gray-500">
+                <span className="font-mono">↑ ↓</span> 버튼으로 데이터가 있는 월로 이동할 수 있습니다
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative flex-1 h-full overflow-y-auto bg-[#fdfbf7] font-serif p-8">
       {/* 배경 패턴 */}
       <div className="absolute inset-0 bg-[linear-gradient(#e8dcc8_1px,transparent_1px),linear-gradient(90deg,#e8dcc8_1px,transparent_1px)] bg-[size:40px_40px] opacity-30 pointer-events-none" />
       <div className="relative max-w-6xl mx-auto space-y-8">
         {/* 헤더 섹션 */}
-        <div className="border-b-4 border-gray-800 pb-4 flex justify-between items-end">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight mb-2">월별 지출 현황</h1>
-            <p className="text-gray-600 text-lg italic">
-              {account.alias} ({account.provider})
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center bg-white border-2 border-gray-800 shadow-[2px_2px_0px_0px_rgba(31,41,55,1)]">
-              <button
-                onClick={handlePrevMonth}
-                disabled={!canGoPrev}
-                className={`p-2 transition-colors border-r-2 border-gray-800 ${
-                  canGoPrev 
-                    ? "hover:bg-gray-100 text-gray-800" 
-                    : "text-gray-300 cursor-not-allowed"
-                }`}
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <div className="px-4 py-2 font-bold text-xl text-gray-900 min-w-[140px] text-center font-serif">
-                {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
-              </div>
-              <button
-                onClick={handleNextMonth}
-                disabled={!canGoNext}
-                className={`p-2 transition-colors border-l-2 border-gray-800 ${
-                  canGoNext 
-                    ? "hover:bg-gray-100 text-gray-800" 
-                    : "text-gray-300 cursor-not-allowed"
-                }`}
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-            <button
-              onClick={handleToday}
-              className="px-4 py-2 bg-gray-800 text-white font-bold text-sm border-2 border-gray-800 hover:bg-gray-700 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,0.3)]"
-            >
-              최근
-            </button>
-          </div>
-        </div>
+        {renderHeader()}
 
         {/* 요약 카드 섹션 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

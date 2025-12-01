@@ -191,3 +191,4 @@ export const WithoutOptionalProp: Story = {
 - 외부에 노출되는 컴포넌트는 사용 예시와 함께 문서화합니다.
 
 * tauri 데스크탑 프로그램이므로 브라우저 테스트를하지 않는다.
+* commit 메시지는 항상 한글로 작성한다.
