@@ -765,6 +765,7 @@ struct HasUsersResponse {
 #[derive(Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NaverPaymentItem {
+    #[serde(default)]
     id: i64,
     line_no: i32,
     product_name: String,
@@ -830,6 +831,7 @@ struct NaverPayment {
 #[derive(Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CoupangPaymentItem {
+    #[serde(default)]
     id: i64,
     line_no: i32,
     product_id: Option<String>,
