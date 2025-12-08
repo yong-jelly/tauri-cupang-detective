@@ -1,0 +1,56 @@
+# Git 레포지토리 이전 히스토리
+
+## 2024-12-08: GitHub 레포지토리 이전
+
+### 배경
+- 기존 레포지토리: `git@github.com:yongteak/tauti-app.git`
+- 신규 레포지토리: `git@github.com:yong-jelly/tauri-cupang-detective.git`
+
+### 수행한 명령어
+
+```bash
+# 1. 현재 원격 저장소 확인
+git remote -v
+# origin	git@github.com:yongteak/tauti-app.git (fetch)
+# origin	git@github.com:yongteak/tauti-app.git (push)
+
+# 2. 원격 저장소 URL을 새 레포지토리로 변경
+git remote set-url origin git@github.com:yong-jelly/tauri-cupang-detective.git
+
+# 3. 변경된 원격 저장소 확인
+git remote -v
+# origin	git@github.com:yong-jelly/tauri-cupang-detective.git (fetch)
+# origin	git@github.com:yong-jelly/tauri-cupang-detective.git (push)
+
+# 4. 모든 히스토리를 포함하여 새 레포지토리에 푸시
+git push -u origin main
+```
+
+### 명령어 설명
+
+| 명령어 | 설명 |
+|--------|------|
+| `git remote -v` | 현재 설정된 원격 저장소 목록과 URL 확인 |
+| `git remote set-url origin <URL>` | 기존 `origin` 원격 저장소의 URL을 새 URL로 변경 |
+| `git push -u origin main` | `main` 브랜치를 원격에 푸시하고, 업스트림 브랜치로 설정 (`-u` 옵션) |
+
+### 참고: 다른 방법들
+
+```bash
+# 방법 1: 기존 origin 유지하고 새 원격 추가
+git remote add new-origin git@github.com:yong-jelly/tauri-cupang-detective.git
+git push -u new-origin main
+
+# 방법 2: 기존 origin 삭제 후 새로 추가
+git remote remove origin
+git remote add origin git@github.com:yong-jelly/tauri-cupang-detective.git
+git push -u origin main
+
+# 모든 브랜치와 태그를 포함하여 푸시 (미러링)
+git push --mirror origin
+```
+
+### 결과
+- 모든 커밋 히스토리가 보존된 채로 새 레포지토리에 등록 완료
+- GitHub URL: https://github.com/yong-jelly/tauri-cupang-detective
+
