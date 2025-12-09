@@ -34,6 +34,7 @@ import { SearchResultsPage } from "@pages/search";
 import { LedgerPage, LedgerEntryPage } from "@pages/ledger";
 import { LedgerAccountOnboarding } from "@features/ledger/account/ui";
 import { LedgerHistoryPanel } from "@features/ledger/history/ui";
+import { BankSaladImportPage } from "@pages/import-banksalad";
 
 import type { DbStatus, HasUsersResponse, User, UserListResponse } from "@shared/api/types";
 
@@ -360,6 +361,9 @@ const RouterContent = () => {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="system" element={<SystemSettingsPage />} />
         <Route path="table-manager" element={<TableManagerPage />} />
+        
+        {/* 가져오기 */}
+        <Route path="import/banksalad" element={<BankSaladImportPage />} />
         
         {/* 계정 관리 */}
         <Route 

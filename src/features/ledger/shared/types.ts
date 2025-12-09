@@ -47,3 +47,5 @@ export type LedgerEntryInput = Omit<LedgerEntry, "id" | "createdAt" | "updatedAt
 
 
 
+
+

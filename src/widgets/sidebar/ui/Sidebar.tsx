@@ -23,6 +23,7 @@ import {
   LogOut,
   PanelLeftClose,
   PanelLeft,
+  FileSpreadsheet,
 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import type { User, UserListResponse } from "@shared/api/types";
@@ -96,6 +97,7 @@ export const Sidebar = ({
     if (path === "/table-manager") return "table-manager";
     if (path === "/playground") return "playground";
     if (path === "/settings") return "settings";
+    if (path === "/import/banksalad") return "import-banksalad";
     
     // 가계부 페이지
     if (path.startsWith("/ledger")) {
@@ -230,6 +232,10 @@ export const Sidebar = ({
     }
     if (page === "settings") {
       navigate("/settings");
+      return;
+    }
+    if (page === "import-banksalad") {
+      navigate("/import/banksalad");
       return;
     }
     if (page === "data-collection-test") {
@@ -691,6 +697,30 @@ export const Sidebar = ({
           
           {expandedSections.tools && (
             <div className={`py-1 ${collapsed ? 'space-y-1' : ''}`}>
+              {/* 가져오기 서브섹션 */}
+              <Tooltip label="가져오기" show={collapsed}>
+                <div className={`${collapsed ? 'w-10 mx-auto' : 'mx-2'}`}>
+                  {!collapsed && (
+                    <p className="text-[10px] text-[#8b7355] uppercase tracking-wider px-3 pt-2 pb-1">
+                      가져오기
+                    </p>
+                  )}
+                  <button
+                    onClick={() => handleNavigation("import-banksalad")}
+                    className={menuItemClass(activePage === "import-banksalad")}
+                  >
+                    <FileSpreadsheet className={`${collapsed ? 'w-5 h-5' : 'w-4 h-4'} flex-shrink-0`} />
+                    {!collapsed && <span className="flex-1 text-left">뱅크샐러드</span>}
+                  </button>
+                </div>
+              </Tooltip>
+              
+              {/* 관리 서브섹션 */}
+              {!collapsed && (
+                <p className="text-[10px] text-[#8b7355] uppercase tracking-wider px-3 mx-2 pt-3 pb-1">
+                  관리
+                </p>
+              )}
               <Tooltip label="테이블 관리" show={collapsed}>
                 <button
                   onClick={() => handleNavigation("table-manager")}
